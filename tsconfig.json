@@ -1,0 +1,13 @@
+{
+    "compilerOptions": {
+        "strict": true,
+        "declaration": true,
+        "declarationDir": "./lib",
+        "module": "ES2020",
+        "moduleResolution": "node",
+        "target": "ES6",
+        "noImplicitAny": true
+    },
+    "include": ["src/**/*.ts"],
+    "exclude": ["node_modules", "lib"]
+}
