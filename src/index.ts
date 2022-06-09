@@ -3,6 +3,7 @@ import { createRefIndex } from './resolve-ref.js';
 import { createLooseObjectIndex } from './loose-object-index.js';
 import { createPackedObjectIndex } from './packed-object-index.js';
 import { createFilesMethods } from './files-list.js';
+import { createCommitMethods } from './commits.js';
 
 export * from './types.js';
 export async function createGitReader(gitdir: string) {
@@ -21,6 +22,7 @@ export async function createGitReader(gitdir: string) {
         readObjectByHash,
         readObjectByOid,
         ...refIndex,
-        ...createFilesMethods(readObjectByOid, readObjectByHash, refIndex.resolveRef)
+        ...createFilesMethods(readObjectByOid, readObjectByHash, refIndex.resolveRef),
+        ...createCommitMethods(readObjectByOid, refIndex.resolveRef)
     };
 }
