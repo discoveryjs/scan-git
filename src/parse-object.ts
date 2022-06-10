@@ -1,109 +1,127 @@
 import { Author, AnnotatedTag, Commit, Tree } from './types';
 
+const NULL_AUTHOR: Author = {
+    name: 'Unknown',
+    email: 'unknown@unknown.com',
+    timestamp: 0,
+    timezone: '+0000'
+};
+
 // The amount of effort that went into crafting these cases to handle
 // -0 (just so we don't lose that information when parsing and reconstructing)
 // but can also default to +0 was extraordinary.
-function parseTimezoneOffset(offset: string) {
-    const [, sign, hours, minutes] = offset.match(/(\+|-)(\d\d)(\d\d)/) || [];
+export function parseTimezoneOffset(offset: string) {
+    const [, sign, hours, minutes] = offset.match(/([+|-])(\d\d)(\d\d)/) || [];
     const norm = (sign === '+' ? 1 : -1) * (Number(hours) * 60 + Number(minutes));
     return norm === 0 ? norm : -norm;
 }
 
 function parseAuthor(input: string): Author {
-    const [, name, email, timestamp, offset] = input.match(/^(.*) <(.*)> (.*) (.*)$/) || [];
+    const [, name, email, timestamp, timezone] = input.match(/^(.*) <(.*)> (\d*) (\S*)$/) || [];
+
     return {
-        name: name,
-        email: email,
-        timestamp: Number(timestamp),
-        timezoneOffset: parseTimezoneOffset(offset)
+        name,
+        email,
+        timestamp: parseInt(timestamp, 10),
+        timezone
     };
 }
 
 export function parseAnnotatedTag(object: Buffer) {
     const content = object.toString('utf8');
-    const headersEnd = content.indexOf('\n\n');
-    const result = parseAnnotatedTagHeaders(content.slice(0, headersEnd));
+    const tag: AnnotatedTag = {
+        tag: '',
+        type: 'tag',
+        object: '',
+        tagger: NULL_AUTHOR,
+        message: '',
+        pgpsig: undefined
+    };
+    const headersEnd = parseAnnotatedTagHeaders(content, tag);
 
-    result.message = content.slice(headersEnd + 2);
+    tag.message = content.slice(headersEnd, -1);
 
-    const gpgsigOffset = result.message.indexOf('-----BEGIN PGP SIGNATURE-----');
+    const gpgsigOffset = tag.message.indexOf('-----BEGIN PGP SIGNATURE-----');
     if (gpgsigOffset !== -1) {
-        result.gpgsig = result.message.slice(gpgsigOffset);
-        result.message = result.message.slice(0, gpgsigOffset - 1);
+        tag.pgpsig = tag.message.slice(gpgsigOffset);
+        tag.message = tag.message.slice(0, gpgsigOffset - 1);
     }
 
-    return result as AnnotatedTag;
+    return tag as AnnotatedTag;
 }
 
-function parseAnnotatedTagHeaders(header: string) {
-    const hs: string[] = [];
+function parseAnnotatedTagHeaders(input: string, dict: AnnotatedTag) {
+    let lineEndOffset = 0;
+    let lineStartOffset = 0;
 
-    for (const line of header.split('\n')) {
-        if (line[0] === ' ') {
-            // combine with previous header (without space indent)
-            hs[hs.length - 1] += '\n' + line.slice(1);
-        } else {
-            hs.push(line);
+    do {
+        lineEndOffset = input.indexOf('\n', lineEndOffset + 1);
+
+        if (lineEndOffset === lineStartOffset) {
+            break; // empty line is an end of headers
         }
-    }
 
-    const obj: Record<string, string | Author> = Object.create(null);
+        const spaceOffset = input.indexOf(' ', lineStartOffset + 1);
+        const key = input.slice(lineStartOffset, spaceOffset) as keyof AnnotatedTag;
+        const value = input.slice(spaceOffset + 1, lineEndOffset) as AnnotatedTag['type'];
 
-    for (const h of hs) {
-        const spaceIndex = h.indexOf(' ');
-        const key = h.slice(0, spaceIndex);
-        const value = h.slice(spaceIndex + 1);
+        if (key === 'tagger') {
+            dict[key] = parseAuthor(value);
+        } else {
+            dict[key] = value;
+        }
 
-        obj[key] = key === 'tagger' ? parseAuthor(value) : value;
-    }
+        lineStartOffset = lineEndOffset + 1;
+    } while (true);
 
-    return obj;
+    return lineEndOffset + 1;
 }
 
 export function parseCommit(object: Buffer) {
+    const commit = {
+        tree: '',
+        parent: [],
+        author: NULL_AUTHOR,
+        committer: NULL_AUTHOR,
+        message: '',
+        pgpdig: undefined
+    } as Commit;
+
     const content = object.toString('utf8');
-    const headersEnd = content.indexOf('\n\n');
-    const result = parseCommitHeaders(content.slice(0, headersEnd));
+    const headersEnd = parseCommitHeaders(content, commit);
 
-    result.message = content.slice(headersEnd + 2);
+    commit.message = content.slice(headersEnd, -1);
 
-    return result as Commit;
+    return commit;
 }
 
-function parseCommitHeaders(header: string) {
-    const hs: string[] = [];
+function parseCommitHeaders(input: string, dict: Commit) {
+    let lineEndOffset = 0;
+    let lineStartOffset = 0;
 
-    for (const line of header.split('\n')) {
-        if (line[0] === ' ') {
-            // combine with previous header (without space indent)
-            hs[hs.length - 1] += '\n' + line.slice(1);
-        } else {
-            hs.push(line);
+    do {
+        lineEndOffset = input.indexOf('\n', lineEndOffset + 1);
+
+        if (lineEndOffset === lineStartOffset) {
+            break; // empty line is an end of headers
         }
-    }
 
-    const obj: {
-        parent: string[];
-        [k: string]: any;
-    } = Object.create(null);
-    obj.parent = [];
-
-    for (const h of hs) {
-        const spaceIndex = h.indexOf(' ');
-        const key = h.slice(0, spaceIndex);
-        const value = h.slice(spaceIndex + 1);
+        const spaceOffset = input.indexOf(' ', lineStartOffset + 1);
+        const key = input.slice(lineStartOffset, spaceOffset) as keyof Commit;
+        const value = input.slice(spaceOffset + 1, lineEndOffset);
 
         if (key === 'parent') {
-            obj[key].push(value);
+            dict[key].push(value);
+        } else if (key === 'author' || key === 'committer') {
+            dict[key] = parseAuthor(value);
         } else {
-            obj[key] =
-                key === 'author' || key === 'committer' || key === 'tagger'
-                    ? parseAuthor(value)
-                    : value;
+            dict[key] = value;
         }
-    }
 
-    return obj;
+        lineStartOffset = lineEndOffset + 1;
+    } while (true);
+
+    return lineEndOffset + 1;
 }
 
 export function parseTree(buffer: Buffer, filesWithHash = false) {

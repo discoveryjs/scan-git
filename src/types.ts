@@ -54,7 +54,7 @@ export type Author = {
     name: string;
     email: string;
     timestamp: number; // UTC Unix timestamp in seconds
-    timezoneOffset: number; // Timezone difference from UTC in minutes
+    timezone: string; // Timezone difference from UTC in minutes
 };
 
 export type AnnotatedTag = {
@@ -63,7 +63,7 @@ export type AnnotatedTag = {
     object: string; // SHA-1 object id of object being tagged
     tagger: Author;
     message: string;
-    gpgsig?: string; // PGP signature (if present)
+    pgpsig?: string; // PGP signature (if present)
 };
 
 export type Commit = {
@@ -72,7 +72,7 @@ export type Commit = {
     author: Author;
     committer: Author;
     message: string;
-    gpgsig?: string; // PGP signature (if present)
+    pgpsig?: string; // PGP signature (if present)
 };
 
 export type TreeEntryTree = {
