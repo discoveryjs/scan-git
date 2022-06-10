@@ -153,9 +153,10 @@ class GitPackIndex {
         }
 
         const fh = await this.fh;
-        const header = Buffer.allocUnsafe(512);
+        const header = Buffer.allocUnsafe(4096);
 
         await fh.read(header, 0, header.byteLength, start);
+
         const reader = new BufferCursor(header);
         const byte = reader.readUInt8();
 
