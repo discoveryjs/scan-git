@@ -1,6 +1,6 @@
 import { join as pathJoin } from 'path';
 import { promises as fsPromises, statSync } from 'fs';
-import { inflateSync as zlibInflate } from 'zlib';
+import { inflateSync as fastInflate } from './fast-inflate.js';
 import { binarySearchHash, BufferCursor } from './utils.js';
 import { GetExternalRefDelta, InternalGitObjectContent } from './types.js';
 
@@ -200,7 +200,7 @@ class GitPackIndex {
                 ? header.slice(reader.offset)
                 : (await fh.read(Buffer.allocUnsafe(objSize), 0, objSize, objOffset)).buffer;
 
-        object = zlibInflate(buffer);
+        object = fastInflate(buffer);
 
         // Assert that the object length is as expected.
         if (object.byteLength !== length) {

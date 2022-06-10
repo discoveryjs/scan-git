@@ -1,4 +1,4 @@
-import { inflateSync as zlibInflate } from 'zlib';
+import { inflateSync as fastInflate } from './fast-inflate.js';
 import { EMPTY_TREE_HASH, EMPTY_TREE_OID } from './const.js';
 import {
     GitObject,
@@ -104,7 +104,7 @@ function decodeObject(result: ReadResult, format: ReadResult['format']) {
 
         result = {
             format: 'wrapped',
-            object: zlibInflate(result.object)
+            object: fastInflate(result.object)
         };
     }
 
