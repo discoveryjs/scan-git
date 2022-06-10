@@ -26,7 +26,7 @@ function unwrapGitObject(buffer: Buffer): InternalGitObjectContent {
     return {
         type,
         format: 'content',
-        object: Buffer.from(buffer.slice(nullIndex + 1)) // FIXME: remove Buffer.from?
+        object: buffer.slice(nullIndex + 1)
     };
 }
 

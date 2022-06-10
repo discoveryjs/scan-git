@@ -211,7 +211,7 @@ class GitPackIndex {
         }
 
         if (base) {
-            object = Buffer.from(applyDelta(object, base));
+            object = applyDelta(object, base);
         }
 
         // result.source = `objects/pack/${packIndex.packFilename}`;
