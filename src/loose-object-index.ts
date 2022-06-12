@@ -1,5 +1,6 @@
 import { promises as fsPromises } from 'fs';
-import { InternalGitObjectDeflated } from './types.js';
+import { inflateSync } from './fast-inflate.js';
+import { GitObject, InternalGitObjectContent } from './types.js';
 import { binarySearchHash } from './utils.js';
 
 type LooseObjectMap = Map<string, string>;
@@ -64,6 +65,18 @@ function createOidFromHash(looseObjectMap: Map<string, string>) {
     };
 }
 
+function unwrapGitObject(buffer: Buffer): InternalGitObjectContent {
+    const spaceIndex = buffer.indexOf(32); // first space
+    const nullIndex = buffer.indexOf(0, spaceIndex + 1); // first null value
+    const type = buffer.toString('utf8', 0, spaceIndex) as GitObject['type']; // get type of object
+    // const length = buffer.toString('utf8', spaceIndex + 1, nullIndex);
+
+    return {
+        type,
+        object: buffer.slice(nullIndex + 1)
+    };
+}
+
 export async function createLooseObjectIndex(gitdir: string) {
     const looseObjectMap = await createLooseObjectMap(gitdir);
     const getOidFromHash = createOidFromHash(looseObjectMap);
@@ -71,10 +84,9 @@ export async function createLooseObjectIndex(gitdir: string) {
         const filepath = looseObjectMap.get(oid);
 
         if (filepath !== undefined) {
-            return {
-                format: 'deflated',
-                object: await fsPromises.readFile(filepath)
-            } as InternalGitObjectDeflated;
+            const deflated = await fsPromises.readFile(filepath);
+
+            return unwrapGitObject(inflateSync(deflated));
         }
 
         return null;

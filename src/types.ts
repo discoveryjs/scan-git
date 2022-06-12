@@ -1,19 +1,9 @@
 import type { createLooseObjectIndex } from './loose-object-index.js';
 import type { createPackedObjectIndex } from './packed-object-index.js';
 
-export type GetExternalRefDelta = (oid: string) => Promise<Record<string, any> | null>;
-export type ReadResult =
-    | InternalGitObjectDeflated
-    | InternalGitObjectWrapped
-    | InternalGitObjectContent;
-export type ReadObjectByOid<T extends ReadResult['format'] = 'content'> = (
-    oid: string,
-    format?: T
-) => Promise<Extract<ReadResult, { format: T }>>;
-export type ReadObjectByHash<T extends ReadResult['format'] = 'content'> = (
-    hash: Buffer,
-    format?: T
-) => Promise<Extract<ReadResult, { format: T }>>;
+export type InternalReadObject = (hash: Buffer) => Promise<InternalGitObjectContent | null>;
+export type ReadObjectByOid = (oid: string) => Promise<InternalGitObjectContent>;
+export type ReadObjectByHash = (hash: Buffer) => Promise<InternalGitObjectContent>;
 
 export type ResolveRef = (ref: string) => Promise<string>;
 
@@ -26,27 +16,8 @@ export type TreeObject = { type: 'tree' };
 export type BlobObject = { type: 'blob' };
 export type GitObject = CommitObject | TagObject | TreeObject | BlobObject;
 
-export type InternalGitObjectFormat = InternalGitObject['format'];
-export type InternalGitObject =
-    | InternalGitObjectDeflated
-    | InternalGitObjectWrapped
-    | InternalGitObjectContent
-    | InternalGitObjectParsed;
-export type InternalGitObjectDeflated = {
-    format: 'deflated';
-    object: Buffer;
-};
-export type InternalGitObjectWrapped = {
-    format: 'wrapped';
-    object: Buffer;
-};
 export type InternalGitObjectContent = {
     type: GitObject['type'];
-    format: 'content';
-    object: Buffer;
-};
-export type InternalGitObjectParsed = {
-    format: 'parsed';
     object: Buffer;
 };
 

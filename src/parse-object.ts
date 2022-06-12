@@ -139,18 +139,7 @@ export function parseTree(buffer: Buffer, filesWithHash = false) {
         //   160000 -> 'commit'
 
         const space = buffer.indexOf(32, offset + 5);
-        if (space === -1) {
-            throw new Error(
-                `GitTree: Error parsing buffer at byte location ${offset}: Could not find the next space character.`
-            );
-        }
-
         const nullchar = buffer.indexOf(0, space + 1);
-        if (nullchar === -1) {
-            throw new Error(
-                `GitTree: Error parsing buffer at byte location ${offset}: Could not find the next null character.`
-            );
-        }
 
         // isTree: mode === "40000", speculate here since only "tree" mode starts with "4"
         const path = buffer.toString('utf8', space + 1, nullchar);

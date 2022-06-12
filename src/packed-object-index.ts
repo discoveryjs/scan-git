@@ -1,18 +1,46 @@
 import { join as pathJoin } from 'path';
 import { promises as fsPromises, statSync } from 'fs';
-import { inflateSync as fastInflate } from './fast-inflate.js';
+import { inflateSync } from './fast-inflate.js';
 import { binarySearchHash, BufferCursor } from './utils.js';
-import { GetExternalRefDelta, InternalGitObjectContent } from './types.js';
+import { InternalReadObject, InternalGitObjectContent } from './types.js';
 
 type Type = 'commit' | 'tree' | 'blob' | 'tag';
-const types: Record<number, string> = {
+type PackedType =
+    | typeof INVALID
+    | typeof COMMIT
+    | typeof TREE
+    | typeof BLOB
+    | typeof RESERVED
+    | typeof TAG
+    | typeof OSF_DELTA
+    | typeof REF_DELTA;
+
+const FPB_LENGTH_BITS = 0b00001111;
+const FPB_MULTIBYTE_LENGTH_BIT = 0b10000000;
+const FPB_TYPE_BITS = 0b01110000;
+
+const INVALID = 0b0000000;
+const COMMIT = 0b0010000;
+const TREE = 0b0100000;
+const BLOB = 0b0110000;
+const RESERVED = 0b1010000;
+const TAG = 0b1000000;
+const OSF_DELTA = 0b1100000;
+const REF_DELTA = 0b1110000;
+const types = {
+    0b0000000: 'invalid',
     0b0010000: 'commit',
     0b0100000: 'tree',
     0b0110000: 'blob',
+    0b1010000: 'reserved',
     0b1000000: 'tag',
     0b1100000: 'ofs_delta',
     0b1110000: 'ref_delta'
 } as const;
+
+const OP_COPY = 0b10000000;
+const OP_SIZE = 0b01110000;
+const OP_OFFS = 0b00001111;
 
 function decodeVarInt(reader: BufferCursor) {
     let byte = 0;
@@ -55,10 +83,6 @@ function readCompactLE(reader: BufferCursor, flags: number, size: number) {
 
     return result;
 }
-
-const OP_COPY = 0b10000000;
-const OP_SIZE = 0b01110000;
-const OP_OFFS = 0b00001111;
 
 function readOp(patchReader: BufferCursor, source: Buffer) {
     const byte = patchReader.readUInt8();
@@ -117,6 +141,9 @@ function applyDelta(delta: Buffer, source: Buffer): Buffer {
     return target;
 }
 
+const buffers = new Array(5000);
+let reuseBufferCount = 0;
+
 class GitPackIndex {
     packFilename: string;
     fh: Promise<fsPromises.FileHandle>;
@@ -124,7 +151,7 @@ class GitPackIndex {
 
     constructor(
         public filename: string,
-        public getExternalRefDelta: GetExternalRefDelta,
+        public readFromAllSources: InternalReadObject,
         public getOffset: (hash: Buffer) => number | undefined
     ) {
         this.packFilename = filename.replace(/\.idx$/, '.pack');
@@ -132,38 +159,34 @@ class GitPackIndex {
         this.cache = new Map();
     }
 
-    read(hash: Buffer): Promise<InternalGitObjectContent> {
+    read(hash: Buffer) {
         const offset = this.getOffset(hash);
 
         if (offset === undefined) {
-            if (this.getExternalRefDelta) {
-                return this.getExternalRefDelta(hash.toString('hex')) as any;
-            } else {
-                throw new Error(`Could not read object ${hash.toString('hex')} from packfile`);
-            }
+            return this.readFromAllSources(hash);
         }
 
-        return this._read(offset);
+        return this.readFromFile(offset);
     }
 
-    async _read(start: number) {
+    async readFromFile(start: number) {
         const cachedResult = this.cache.get(start);
         if (cachedResult !== undefined) {
             return cachedResult;
         }
 
         const fh = await this.fh;
-        const header = Buffer.allocUnsafe(4096);
+        const header =
+            reuseBufferCount > 0 ? buffers[--reuseBufferCount] : Buffer.allocUnsafe(4096);
 
         await fh.read(header, 0, header.byteLength, start);
 
         const reader = new BufferCursor(header);
-        const byte = reader.readUInt8();
+        const firstByte = reader.readUInt8();
+        const btype = (firstByte & FPB_TYPE_BITS) as PackedType;
+        let type: Type;
 
-        const btype = byte & 0b01110000;
-
-        let type = types[btype];
-        if (type === undefined) {
+        if (btype === INVALID || btype === RESERVED) {
             throw new Error(`Unrecognized type: 0b${btype.toString(2)}`);
         }
 
@@ -171,25 +194,21 @@ class GitPackIndex {
         // Last four bits of length is encoded in bits 3210
         // Whether the next byte is part of the variable-length encoded number
         // is encoded in bit 7
-        let length = byte & 0b00001111;
-        const multibyte = byte & 0b10000000;
-        if (multibyte) {
+        let length = firstByte & FPB_LENGTH_BITS;
+        if (firstByte & FPB_MULTIBYTE_LENGTH_BIT) {
             length |= readVarIntLE(reader) << 4;
         }
 
-        let base = null;
-        let object = null;
+        let deltaRef: Buffer | number | null = null;
 
         // Handle deltified objects
-        if (type === 'ofs_delta') {
-            const offset = decodeVarInt(reader);
-            const baseOffset = start - offset;
-
-            ({ object: base, type } = await this._read(baseOffset));
-        } else if (type === 'ref_delta') {
+        if (btype === OSF_DELTA) {
+            deltaRef = start - decodeVarInt(reader);
+        } else if (btype === REF_DELTA) {
             const hash = reader.slice(20);
+            const offset = this.getOffset(hash);
 
-            ({ object: base, type } = await this.read(hash));
+            deltaRef = typeof offset === 'number' ? offset : hash;
         }
 
         // Handle undeltified objects
@@ -201,23 +220,35 @@ class GitPackIndex {
                 ? header.slice(reader.offset)
                 : (await fh.read(Buffer.allocUnsafe(objSize), 0, objSize, objOffset)).buffer;
 
-        object = fastInflate(buffer);
+        let object = inflateSync(buffer);
+        buffers[reuseBufferCount++] = header;
 
-        // Assert that the object length is as expected.
+        // Assert that the object lexngth is as expected.
         if (object.byteLength !== length) {
             throw new Error(
                 `Packfile told us object would have length ${length} but it had length ${object.byteLength}`
             );
         }
 
-        if (base) {
-            object = applyDelta(object, base);
+        if (deltaRef !== null) {
+            const delta =
+                typeof deltaRef === 'number'
+                    ? await this.readFromFile(deltaRef)
+                    : await this.readFromAllSources(deltaRef);
+
+            if (delta === null) {
+                throw new Error('Could not read delta object from packfile');
+            }
+
+            type = delta.type;
+            object = applyDelta(object, delta.object);
+        } else {
+            type = types[btype] as Type;
         }
 
         // result.source = `objects/pack/${packIndex.packFilename}`;
         const result: InternalGitObjectContent = {
-            type: type as Type,
-            format: 'content',
+            type,
             object
         };
 
@@ -227,7 +258,7 @@ class GitPackIndex {
     }
 }
 
-async function loadPackIndex(filename: string, getExternalRefDelta: GetExternalRefDelta) {
+async function loadPackIndex(filename: string, readFromAllSources: InternalReadObject) {
     if ((await fsPromises.stat(filename)).size > 2048 * 1024 * 1024) {
         throw new Error('Packfiles > 2GB is not supported for now');
     }
@@ -281,7 +312,7 @@ async function loadPackIndex(filename: string, getExternalRefDelta: GetExternalR
             return idx;
         };
 
-        return new GitPackIndex(filename, getExternalRefDelta, (hash: Buffer) => {
+        return new GitPackIndex(filename, readFromAllSources, (hash: Buffer) => {
             const idx = getIdx(hash);
 
             return idx !== -1 ? offsets.readUInt32BE(idx * 4) : undefined;
@@ -293,7 +324,7 @@ async function loadPackIndex(filename: string, getExternalRefDelta: GetExternalR
 
 export async function createPackedObjectIndex(
     gitdir: string,
-    getExternalRefDelta: GetExternalRefDelta
+    readFromAllSources: InternalReadObject
 ) {
     const packdir = pathJoin(gitdir, 'objects/pack');
     const filelist = (await fsPromises.readdir(packdir))
@@ -309,7 +340,7 @@ export async function createPackedObjectIndex(
     const packIndecies = await Promise.all(
         filelist
             .sort((a, b) => mtime.get(b) - mtime.get(a))
-            .map((filename) => loadPackIndex(filename, getExternalRefDelta))
+            .map((filename) => loadPackIndex(filename, readFromAllSources))
     );
 
     // process.on("exit", () => {
@@ -327,7 +358,7 @@ export async function createPackedObjectIndex(
             const offset = packedObjectIndex.getOffset(hash);
 
             if (offset !== undefined) {
-                return packedObjectIndex._read(offset);
+                return packedObjectIndex.readFromFile(offset);
             }
         }
 
