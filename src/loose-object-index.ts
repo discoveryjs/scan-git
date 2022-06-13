@@ -1,6 +1,6 @@
 import { promises as fsPromises } from 'fs';
 import { inflateSync } from './fast-inflate.js';
-import { GitObject, InternalGitObjectContent } from './types.js';
+import { GitObject, InternalGitObjectContent, InternalGitObjectHeader } from './types.js';
 import { binarySearchHash } from './utils.js';
 
 type LooseObjectMap = Map<string, string>;
@@ -29,7 +29,7 @@ async function createLooseObjectMap(gitdir: string): Promise<LooseObjectMap> {
     return looseObjectMap;
 }
 
-function createOidFromHash(looseObjectMap: Map<string, string>) {
+function createGetOidFromHash(looseObjectMap: Map<string, string>) {
     const hashes = Buffer.alloc(20 * looseObjectMap.size);
     const oidByHash = new Array<string>(looseObjectMap.size);
     const fanoutTable = new Array<[start: number, end: number]>(256);
@@ -65,11 +65,22 @@ function createOidFromHash(looseObjectMap: Map<string, string>) {
     };
 }
 
-function unwrapGitObject(buffer: Buffer): InternalGitObjectContent {
+function parseLooseGitObjectHeader(buffer: Buffer): InternalGitObjectHeader {
+    const spaceIndex = buffer.indexOf(32); // first space
+    const nullIndex = buffer.indexOf(0, spaceIndex + 1); // first null is the end of header
+    const type = buffer.toString('utf8', 0, spaceIndex) as GitObject['type'];
+    const length = parseInt(buffer.toString('utf8', spaceIndex + 1, nullIndex), 10);
+
+    return {
+        type,
+        length
+    };
+}
+
+function parseLooseGitObject(buffer: Buffer): InternalGitObjectContent {
     const spaceIndex = buffer.indexOf(32); // first space
     const nullIndex = buffer.indexOf(0, spaceIndex + 1); // first null value
     const type = buffer.toString('utf8', 0, spaceIndex) as GitObject['type']; // get type of object
-    // const length = buffer.toString('utf8', spaceIndex + 1, nullIndex);
 
     return {
         type,
@@ -79,25 +90,50 @@ function unwrapGitObject(buffer: Buffer): InternalGitObjectContent {
 
 export async function createLooseObjectIndex(gitdir: string) {
     const looseObjectMap = await createLooseObjectMap(gitdir);
-    const getOidFromHash = createOidFromHash(looseObjectMap);
-    const readByOid = async (oid: string) => {
+    const getOidFromHash = createGetOidFromHash(looseObjectMap);
+    const readObjectHeaderByOid = async (oid: string) => {
+        const filepath = looseObjectMap.get(oid);
+
+        if (filepath !== undefined) {
+            let fh: fsPromises.FileHandle | null = null;
+            try {
+                fh = await fsPromises.open(filepath);
+
+                const headerBuffer = Buffer.alloc(64);
+                await fh.read(headerBuffer, 0, 64, 0);
+
+                return parseLooseGitObjectHeader(inflateSync(headerBuffer));
+            } finally {
+                fh?.close();
+            }
+        }
+
+        return null;
+    };
+    const readObjectByOid = async (oid: string) => {
         const filepath = looseObjectMap.get(oid);
 
         if (filepath !== undefined) {
             const deflated = await fsPromises.readFile(filepath);
 
-            return unwrapGitObject(inflateSync(deflated));
+            return parseLooseGitObject(inflateSync(deflated));
         }
 
         return null;
     };
 
     return {
-        readByOid,
-        readByHash(hash: Buffer) {
+        readObjectHeaderByOid,
+        readObjectHeaderByHash(hash: Buffer) {
             const oid = getOidFromHash(hash);
 
-            return oid !== null ? readByOid(oid) : null;
+            return oid !== null ? readObjectHeaderByOid(oid) : null;
+        },
+        readObjectByOid,
+        readObjectByHash(hash: Buffer) {
+            const oid = getOidFromHash(hash);
+
+            return oid !== null ? readObjectByOid(oid) : null;
         }
     };
 }

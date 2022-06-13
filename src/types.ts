@@ -2,6 +2,7 @@ import type { createLooseObjectIndex } from './loose-object-index.js';
 import type { createPackedObjectIndex } from './packed-object-index.js';
 
 export type InternalReadObject = (hash: Buffer) => Promise<InternalGitObjectContent | null>;
+export type InternalReadObjectHeader = (hash: Buffer) => Promise<InternalGitObjectHeader | null>;
 export type ReadObjectByOid = (oid: string) => Promise<InternalGitObjectContent>;
 export type ReadObjectByHash = (hash: Buffer) => Promise<InternalGitObjectContent>;
 
@@ -16,6 +17,10 @@ export type TreeObject = { type: 'tree' };
 export type BlobObject = { type: 'blob' };
 export type GitObject = CommitObject | TagObject | TreeObject | BlobObject;
 
+export type InternalGitObjectHeader = {
+    type: GitObject['type'];
+    length: number;
+};
 export type InternalGitObjectContent = {
     type: GitObject['type'];
     object: Buffer;

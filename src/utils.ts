@@ -4,7 +4,7 @@ export function isOid(value: unknown) {
 
 export class BufferCursor {
     #offset = 0;
-    constructor(private buffer: Buffer) {}
+    constructor(public buffer: Buffer) {}
 
     eof() {
         return this.#offset >= this.buffer.length;

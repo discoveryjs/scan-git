@@ -8,18 +8,19 @@ import { createCommitMethods } from './commits.js';
 export * from './types.js';
 export async function createGitReader(gitdir: string) {
     const internalReadObjectByHash = (hash: Buffer) => readObjectByHash(hash);
+    const internalReadObjectHeaderByHash = (hash: Buffer) => readObjectHeaderByHash(hash);
     const [refIndex, looseObjectIndex, packedObjectIndex] = await Promise.all([
         createRefIndex(gitdir),
         createLooseObjectIndex(gitdir),
-        createPackedObjectIndex(gitdir, internalReadObjectByHash)
+        createPackedObjectIndex(gitdir, internalReadObjectByHash, internalReadObjectHeaderByHash)
     ]);
-    const { readObjectByHash, readObjectByOid } = createReadObject(
-        looseObjectIndex,
-        packedObjectIndex
-    );
+    const { readObjectHeaderByHash, readObjectByHash, readObjectHeaderByOid, readObjectByOid } =
+        createReadObject(looseObjectIndex, packedObjectIndex);
 
     return {
+        readObjectHeaderByHash,
         readObjectByHash,
+        readObjectHeaderByOid,
         readObjectByOid,
         ...refIndex,
         ...createFilesMethods(readObjectByOid, readObjectByHash, refIndex.resolveRef),

@@ -2,7 +2,12 @@ import { join as pathJoin } from 'path';
 import { promises as fsPromises, statSync } from 'fs';
 import { inflateSync } from './fast-inflate.js';
 import { binarySearchHash, BufferCursor } from './utils.js';
-import { InternalReadObject, InternalGitObjectContent } from './types.js';
+import {
+    InternalReadObject,
+    InternalGitObjectContent,
+    InternalReadObjectHeader,
+    InternalGitObjectHeader
+} from './types.js';
 
 type Type = 'commit' | 'tree' | 'blob' | 'tag';
 type PackedType =
@@ -145,46 +150,51 @@ const buffers = new Array(5000);
 let reuseBufferCount = 0;
 
 class GitPackIndex {
-    packFilename: string;
-    fh: Promise<fsPromises.FileHandle>;
     cache: Map<number, InternalGitObjectContent>;
 
     constructor(
         public filename: string,
-        public readFromAllSources: InternalReadObject,
+        private fh: fsPromises.FileHandle,
+        public readObjectFromAllSources: InternalReadObject,
+        public readObjectHeaderFromAllSources: InternalReadObjectHeader,
         public getOffset: (hash: Buffer) => number | undefined
     ) {
-        this.packFilename = filename.replace(/\.idx$/, '.pack');
-        this.fh = fsPromises.open(this.packFilename);
         this.cache = new Map();
     }
 
-    read(hash: Buffer) {
+    readObjectHeader(hash: Buffer) {
         const offset = this.getOffset(hash);
 
-        if (offset === undefined) {
-            return this.readFromAllSources(hash);
+        if (offset !== undefined) {
+            return this.readObjectFromFile(offset);
         }
 
-        return this.readFromFile(offset);
+        return this.readObjectFromAllSources(hash);
     }
 
-    async readFromFile(start: number) {
-        const cachedResult = this.cache.get(start);
-        if (cachedResult !== undefined) {
-            return cachedResult;
+    readObject(hash: Buffer) {
+        const offset = this.getOffset(hash);
+
+        if (offset !== undefined) {
+            return this.readObjectFromFile(offset);
         }
 
-        const fh = await this.fh;
+        return this.readObjectFromAllSources(hash);
+    }
+
+    private read(buffer: Buffer, start: number) {
+        return this.fh.read(buffer, 0, buffer.byteLength, start);
+    }
+
+    private async readObjectPreludeFromFile(start: number) {
         const header =
             reuseBufferCount > 0 ? buffers[--reuseBufferCount] : Buffer.allocUnsafe(4096);
 
-        await fh.read(header, 0, header.byteLength, start);
+        await this.read(header, start);
 
         const reader = new BufferCursor(header);
         const firstByte = reader.readUInt8();
         const btype = (firstByte & FPB_TYPE_BITS) as PackedType;
-        let type: Type;
 
         if (btype === INVALID || btype === RESERVED) {
             throw new Error(`Unrecognized type: 0b${btype.toString(2)}`);
@@ -208,8 +218,55 @@ class GitPackIndex {
             const hash = reader.slice(20);
             const offset = this.getOffset(hash);
 
-            deltaRef = typeof offset === 'number' ? offset : hash;
+            deltaRef = typeof offset === 'number' ? offset : Buffer.from(hash);
         }
+
+        return {
+            btype,
+            length,
+            reader,
+            deltaRef
+        };
+    }
+
+    async readObjectHeaderFromFile(start: number) {
+        const { btype, length, reader, deltaRef } = await this.readObjectPreludeFromFile(start);
+        let type: Type;
+
+        buffers[reuseBufferCount++] = reader.buffer;
+
+        if (deltaRef !== null) {
+            const delta =
+                typeof deltaRef === 'number'
+                    ? await this.readObjectHeaderFromFile(deltaRef)
+                    : await this.readObjectHeaderFromAllSources(deltaRef);
+
+            if (delta === null) {
+                throw new Error('Could not read delta object from packfile');
+            }
+
+            type = delta.type;
+        } else {
+            type = types[btype] as Type;
+        }
+
+        const result: InternalGitObjectHeader = {
+            type,
+            length
+        };
+
+        return result;
+    }
+
+    async readObjectFromFile(start: number) {
+        const cachedResult = this.cache.get(start);
+        if (cachedResult !== undefined) {
+            return cachedResult;
+        }
+
+        const { btype, length, reader, deltaRef } = await this.readObjectPreludeFromFile(start);
+        const header = reader.buffer;
+        let type: Type;
 
         // Handle undeltified objects
         const objSize = length + 16;
@@ -218,7 +275,7 @@ class GitPackIndex {
         const buffer =
             bufferLeft >= objSize
                 ? header.slice(reader.offset)
-                : (await fh.read(Buffer.allocUnsafe(objSize), 0, objSize, objOffset)).buffer;
+                : (await this.read(Buffer.allocUnsafe(objSize), objOffset)).buffer;
 
         let object = inflateSync(buffer);
         buffers[reuseBufferCount++] = header;
@@ -233,8 +290,8 @@ class GitPackIndex {
         if (deltaRef !== null) {
             const delta =
                 typeof deltaRef === 'number'
-                    ? await this.readFromFile(deltaRef)
-                    : await this.readFromAllSources(deltaRef);
+                    ? await this.readObjectFromFile(deltaRef)
+                    : await this.readObjectFromAllSources(deltaRef);
 
             if (delta === null) {
                 throw new Error('Could not read delta object from packfile');
@@ -258,7 +315,11 @@ class GitPackIndex {
     }
 }
 
-async function loadPackIndex(filename: string, readFromAllSources: InternalReadObject) {
+async function loadPackIndex(
+    filename: string,
+    readObjectFromAllSources: InternalReadObject,
+    readObjectHeaderFromAllSources: InternalReadObjectHeader
+) {
     if ((await fsPromises.stat(filename)).size > 2048 * 1024 * 1024) {
         throw new Error('Packfiles > 2GB is not supported for now');
     }
@@ -312,11 +373,18 @@ async function loadPackIndex(filename: string, readFromAllSources: InternalReadO
             return idx;
         };
 
-        return new GitPackIndex(filename, readFromAllSources, (hash: Buffer) => {
-            const idx = getIdx(hash);
+        const packFilename = filename.replace(/\.idx$/, '.pack');
+        return new GitPackIndex(
+            packFilename,
+            await fsPromises.open(packFilename),
+            readObjectFromAllSources,
+            readObjectHeaderFromAllSources,
+            (hash: Buffer) => {
+                const idx = getIdx(hash);
 
-            return idx !== -1 ? offsets.readUInt32BE(idx * 4) : undefined;
-        });
+                return idx !== -1 ? offsets.readUInt32BE(idx * 4) : undefined;
+            }
+        );
     } finally {
         fh?.close();
     }
@@ -324,7 +392,8 @@ async function loadPackIndex(filename: string, readFromAllSources: InternalReadO
 
 export async function createPackedObjectIndex(
     gitdir: string,
-    readFromAllSources: InternalReadObject
+    readObjectFromAllSources: InternalReadObject,
+    readObjectHeaderFromAllSources: InternalReadObjectHeader
 ) {
     const packdir = pathJoin(gitdir, 'objects/pack');
     const filelist = (await fsPromises.readdir(packdir))
@@ -340,7 +409,9 @@ export async function createPackedObjectIndex(
     const packIndecies = await Promise.all(
         filelist
             .sort((a, b) => mtime.get(b) - mtime.get(a))
-            .map((filename) => loadPackIndex(filename, readFromAllSources))
+            .map((filename) =>
+                loadPackIndex(filename, readObjectFromAllSources, readObjectHeaderFromAllSources)
+            )
     );
 
     // process.on("exit", () => {
@@ -353,12 +424,24 @@ export async function createPackedObjectIndex(
     //   );
     // });
 
-    const readByHash = (hash: Buffer) => {
+    const readObjectHeaderByHash = (hash: Buffer) => {
         for (const packedObjectIndex of packIndecies) {
             const offset = packedObjectIndex.getOffset(hash);
 
             if (offset !== undefined) {
-                return packedObjectIndex.readFromFile(offset);
+                return packedObjectIndex.readObjectHeaderFromFile(offset);
+            }
+        }
+
+        return null;
+    };
+
+    const readObjectByHash = (hash: Buffer) => {
+        for (const packedObjectIndex of packIndecies) {
+            const offset = packedObjectIndex.getOffset(hash);
+
+            if (offset !== undefined) {
+                return packedObjectIndex.readObjectFromFile(offset);
             }
         }
 
@@ -366,9 +449,13 @@ export async function createPackedObjectIndex(
     };
 
     return {
-        readByHash,
-        readByOid(oid: string) {
-            return readByHash(Buffer.from(oid, 'hex'));
+        readObjectHeaderByHash,
+        readObjectByHash,
+        readObjectHeaderByOid(oid: string) {
+            return readObjectHeaderByHash(Buffer.from(oid, 'hex'));
+        },
+        readObjectByOid(oid: string) {
+            return readObjectByHash(Buffer.from(oid, 'hex'));
         }
     };
 }
