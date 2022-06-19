@@ -239,7 +239,7 @@ class GitPackIndex {
             const delta =
                 typeof deltaRef === 'number'
                     ? await this.readObjectHeaderFromFile(deltaRef)
-                    : await this.readObjectHeaderFromAllSources(deltaRef);
+                    : await this.readObjectHeader(deltaRef);
 
             if (delta === null) {
                 throw new Error('Could not read delta object from packfile');
@@ -291,7 +291,7 @@ class GitPackIndex {
             const delta =
                 typeof deltaRef === 'number'
                     ? await this.readObjectFromFile(deltaRef)
-                    : await this.readObjectFromAllSources(deltaRef);
+                    : await this.readObject(deltaRef);
 
             if (delta === null) {
                 throw new Error('Could not read delta object from packfile');
@@ -320,25 +320,29 @@ async function loadPackIndex(
     readObjectFromAllSources: InternalReadObject,
     readObjectHeaderFromAllSources: InternalReadObjectHeader
 ) {
-    if ((await fsPromises.stat(filename)).size > 2048 * 1024 * 1024) {
-        throw new Error('Packfiles > 2GB is not supported for now');
-    }
-
+    const packFilename = filename.replace(/\.idx$/, '.pack');
     let fh: fsPromises.FileHandle | null = null;
+    let readOffset = 0;
+
     try {
         fh = await fsPromises.open(filename);
 
-        const header = Buffer.allocUnsafe(4 * (2 + 255 + 1));
-        const headerSize = header.byteLength;
+        // https://git-scm.com/docs/pack-format
+        // Version 2 pack-*.idx files format:
+        // A 4-byte magic number \377tOc which is an unreasonable fanout[0] value.
+        // A 4-byte version number (= 2)
+        // A 256-entry fan-out table just like v1.
+        const header = Buffer.allocUnsafe(4 + 4 + 256 * 4);
 
-        await fh.read(header, 0, headerSize);
+        await fh.read(header, 0, header.byteLength, readOffset);
+        readOffset += header.byteLength;
 
-        // Check for IDX v2 magic number
+        // Check magic number for IDX v2 (\377tOc)
         if (header.readUInt32BE(0) !== 0xff744f63) {
             throw new Error(`Bad magick 0x${header.toString('hex', 0, 4)} in ${filename}`);
         }
 
-        // version
+        // Check version
         const version = header.readUInt32BE(4);
         if (version !== 2) {
             throw new Error(
@@ -346,43 +350,66 @@ async function loadPackIndex(
             );
         }
 
-        // Get entries count
-        const size = header.readUInt32BE(4 * (2 + 255));
-
-        // read hashes & offsets
-        const hashes = Buffer.allocUnsafe(20 * size);
-        const offsets = Buffer.allocUnsafe(4 * size);
-
-        await fh.read(hashes, 0, hashes.byteLength, headerSize);
-        await fh.read(offsets, 0, offsets.byteLength, headerSize + (20 + 4) * size);
-
-        // build fanout table
+        // Build fanout table as a range [startIndex, endIndex]
         const fanoutTable = new Array(256);
-        for (let i = 0, prevOffset = 0; i < 256; i++) {
-            const offset = header.readUInt32BE(8 + i * 4);
+        for (let i = 0, startIndex = 0; i < 256; i++) {
+            const endIndex = header.readUInt32BE(8 + i * 4);
 
-            fanoutTable[i] = [prevOffset, offset];
-            prevOffset = offset;
+            fanoutTable[i] = [startIndex, endIndex];
+            startIndex = endIndex;
         }
 
-        // api
-        const getIdx = (hash: Buffer) => {
-            const [start, end] = fanoutTable[hash[0]];
-            const idx = start !== end ? binarySearchHash(hashes, hash, start, end - 1) : -1;
+        // End index of last fanout-table element is a entries count
+        const size = fanoutTable[255][1];
 
-            return idx;
-        };
+        // A table of sorted object names
+        const hashes = Buffer.allocUnsafe(20 * size);
 
-        const packFilename = filename.replace(/\.idx$/, '.pack');
+        await fh.read(hashes, 0, hashes.byteLength, readOffset);
+        readOffset += hashes.byteLength;
+        readOffset += size * 4; // skip: A table of 4-byte CRC32 values of the packed object data
+
+        // A table of 4-byte offset values (in network byte order). These are usually 31-bit pack file offsets,
+        // but large offsets are encoded as an index into the next table with the msbit set.
+        const offsets = Buffer.allocUnsafe(4 * size);
+
+        await fh.read(offsets, 0, offsets.byteLength, readOffset);
+        readOffset += offsets.byteLength;
+
+        // A table of 8-byte offset entries (empty for pack files less than 2 GiB).
+        const bigOffsetsSize = (await fsPromises.stat(filename)).size - readOffset - 2 * 20;
+        const bigOffsets = Buffer.allocUnsafe(bigOffsetsSize);
+
+        if (bigOffsetsSize > 0) {
+            await fh.read(bigOffsets, 0, bigOffsets.byteLength, readOffset);
+        }
+
         return new GitPackIndex(
             packFilename,
             await fsPromises.open(packFilename),
             readObjectFromAllSources,
             readObjectHeaderFromAllSources,
             (hash: Buffer) => {
-                const idx = getIdx(hash);
+                const [start, end] = fanoutTable[hash[0]];
+                const idx = start !== end ? binarySearchHash(hashes, hash, start, end - 1) : -1;
 
-                return idx !== -1 ? offsets.readUInt32BE(idx * 4) : undefined;
+                if (idx === -1) {
+                    return undefined;
+                }
+
+                const offset = offsets.readUInt32BE(idx * 4); // index 4-bytes table
+
+                // When msbit is set to 1 then offset is an index for bigOffsets table
+                if (offset & 0x80000000) {
+                    const bigOffsetIdx = (offset & 0x7fffffff) * 8; // index 8-bytes table
+                    const bigOffset = bigOffsets.readBigInt64BE(bigOffsetIdx);
+
+                    // Convert bigint->number to avoid BigInt spread,
+                    // since all posible offsets are less then MAX_SAFE_INTEGER
+                    return Number(bigOffset);
+                }
+
+                return offset;
             }
         );
     } finally {
@@ -414,16 +441,6 @@ export async function createPackedObjectIndex(
             )
     );
 
-    // process.on("exit", () => {
-    //   packIndecies.forEach(pi =>
-    //     console.log(
-    //       pi.used || "----",
-    //       path.basename(pi.filename),
-    //       pi.offsets.size
-    //     )
-    //   );
-    // });
-
     const readObjectHeaderByHash = (hash: Buffer) => {
         for (const packedObjectIndex of packIndecies) {
             const offset = packedObjectIndex.getOffset(hash);
@@ -450,10 +467,10 @@ export async function createPackedObjectIndex(
 
     return {
         readObjectHeaderByHash,
-        readObjectByHash,
         readObjectHeaderByOid(oid: string) {
             return readObjectHeaderByHash(Buffer.from(oid, 'hex'));
         },
+        readObjectByHash,
         readObjectByOid(oid: string) {
             return readObjectByHash(Buffer.from(oid, 'hex'));
         }
