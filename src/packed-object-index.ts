@@ -1,5 +1,5 @@
 import { join as pathJoin } from 'path';
-import { promises as fsPromises, statSync } from 'fs';
+import { promises as fsPromises } from 'fs';
 import { inflateSync } from './fast-inflate.js';
 import { binarySearchHash, BufferCursor } from './utils.js';
 import {
@@ -316,16 +316,16 @@ class GitPackIndex {
 }
 
 async function loadPackIndex(
-    filename: string,
+    packFilename: string,
     readObjectFromAllSources: InternalReadObject,
     readObjectHeaderFromAllSources: InternalReadObjectHeader
 ) {
-    const packFilename = filename.replace(/\.idx$/, '.pack');
+    const idxFilename = packFilename.replace(/\.pack$/, '.idx');
     let fh: fsPromises.FileHandle | null = null;
     let readOffset = 0;
 
     try {
-        fh = await fsPromises.open(filename);
+        fh = await fsPromises.open(idxFilename);
 
         // https://git-scm.com/docs/pack-format
         // Version 2 pack-*.idx files format:
@@ -339,14 +339,14 @@ async function loadPackIndex(
 
         // Check magic number for IDX v2 (\377tOc)
         if (header.readUInt32BE(0) !== 0xff744f63) {
-            throw new Error(`Bad magick 0x${header.toString('hex', 0, 4)} in ${filename}`);
+            throw new Error(`Bad magick 0x${header.toString('hex', 0, 4)} in ${idxFilename}`);
         }
 
         // Check version
         const version = header.readUInt32BE(4);
         if (version !== 2) {
             throw new Error(
-                `Bad packfile version "${version}" in ${filename}. (Only version 2 is supported)`
+                `Bad packfile version "${version}" in ${idxFilename}. (Only version 2 is supported)`
             );
         }
 
@@ -377,7 +377,7 @@ async function loadPackIndex(
         readOffset += offsets.byteLength;
 
         // A table of 8-byte offset entries (empty for pack files less than 2 GiB).
-        const bigOffsetsSize = (await fsPromises.stat(filename)).size - readOffset - 2 * 20;
+        const bigOffsetsSize = (await fsPromises.stat(idxFilename)).size - readOffset - 2 * 20;
         const bigOffsets = Buffer.allocUnsafe(bigOffsetsSize);
 
         if (bigOffsetsSize > 0) {
@@ -423,22 +423,14 @@ export async function createPackedObjectIndex(
     readObjectHeaderFromAllSources: InternalReadObjectHeader
 ) {
     const packdir = pathJoin(gitdir, 'objects/pack');
-    const filelist = (await fsPromises.readdir(packdir))
-        .filter((filename) => filename.endsWith('.idx'))
+    const packfiles = (await fsPromises.readdir(packdir))
+        .filter((filename) => filename.endsWith('.pack'))
         .map((filename) => `${packdir}/${filename}`);
 
-    // sort files in order from youngest to older
-    const mtime = filelist.reduce(
-        (map, filename) => map.set(filename, statSync(filename).mtime),
-        new Map()
-    );
-
     const packIndecies = await Promise.all(
-        filelist
-            .sort((a, b) => mtime.get(b) - mtime.get(a))
-            .map((filename) =>
-                loadPackIndex(filename, readObjectFromAllSources, readObjectHeaderFromAllSources)
-            )
+        packfiles.map((filename) =>
+            loadPackIndex(filename, readObjectFromAllSources, readObjectHeaderFromAllSources)
+        )
     );
 
     const readObjectHeaderByHash = (hash: Buffer) => {
