@@ -2,6 +2,32 @@ export function isOid(value: unknown) {
     return typeof value === 'string' && value.length === 40 && /[0-9a-f]{40}/.test(value);
 }
 
+export function decodeVarInt(reader: BufferCursor) {
+    let byte = 0;
+    let result = -1;
+
+    do {
+        byte = reader.readUInt8();
+        result = ((result + 1) << 7) | (byte & 0b01111111);
+    } while (byte & 0b10000000);
+
+    return result;
+}
+
+export function readVarIntLE(reader: BufferCursor) {
+    let result = 0;
+    let shift = 0;
+    let byte = 0;
+
+    do {
+        byte = reader.readUInt8();
+        result |= (byte & 0b01111111) << shift;
+        shift += 7;
+    } while (byte & 0b10000000);
+
+    return result;
+}
+
 export class BufferCursor {
     #offset = 0;
     constructor(public buffer: Buffer) {}
@@ -28,7 +54,7 @@ export class BufferCursor {
         return bytesWritten;
     }
 
-    copy(source: Buffer, sourceStart?: number, sourceEnd?: number) {
+    copyFrom(source: Buffer, sourceStart?: number, sourceEnd?: number) {
         const copiedBytes = source.copy(this.buffer, this.#offset, sourceStart, sourceEnd);
         this.#offset += copiedBytes;
         return copiedBytes;
@@ -80,3 +106,52 @@ export function binarySearchHash(hashes: Buffer, hash: Buffer, l: number, h: num
 //     "e342a27173009ac88cdc2c1dbfa5adf461f22561"
 //   )
 // );
+
+export function binarySearchUint32(buffer: Buffer, number: number, fn: (value: number) => number) {
+    let l = 0;
+    let h = buffer.byteLength / 4 - 1;
+
+    while (l <= h) {
+        const m = l + ((h - l) >> 1);
+        const mo = m * 4;
+        const res = number - fn(buffer.readUint32BE(mo));
+
+        if (res === 0) {
+            return m;
+        }
+
+        if (res > 0) {
+            l = m + 1;
+        } else {
+            h = m - 1;
+        }
+    }
+
+    return -1;
+}
+
+export function checkFileHeader(
+    filename: string,
+    header: Buffer,
+    magick: Buffer,
+    expectedVersion: number
+) {
+    // Check magic signature
+    if (header.compare(magick, 0, 4, 0, 4) !== 0) {
+        throw new Error(
+            `Bad magick 0x${header.toString(
+                'hex',
+                0,
+                4
+            )} in ${filename} (expected 0x${magick.toString('hex')})`
+        );
+    }
+
+    // Check version
+    const actualVersion = header.readUInt32BE(4);
+    if (actualVersion !== expectedVersion) {
+        throw new Error(
+            `Bad version "${actualVersion}" in ${filename}. (Only version "${expectedVersion}" is supported)`
+        );
+    }
+}

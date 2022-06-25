@@ -77,7 +77,7 @@ function parseLooseGitObjectHeader(buffer: Buffer): InternalGitObjectHeader {
     };
 }
 
-function parseLooseGitObject(buffer: Buffer): InternalGitObjectContent {
+function parseLooseObject(buffer: Buffer): InternalGitObjectContent {
     const spaceIndex = buffer.indexOf(32); // first space
     const nullIndex = buffer.indexOf(0, spaceIndex + 1); // first null value
     const type = buffer.toString('utf8', 0, spaceIndex) as GitObject['type']; // get type of object
@@ -116,7 +116,7 @@ export async function createLooseObjectIndex(gitdir: string) {
         if (filepath !== undefined) {
             const deflated = await fsPromises.readFile(filepath);
 
-            return parseLooseGitObject(inflateSync(deflated));
+            return parseLooseObject(inflateSync(deflated));
         }
 
         return null;
