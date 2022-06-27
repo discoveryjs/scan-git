@@ -124,40 +124,25 @@ function parseCommitHeaders(input: string, dict: Commit) {
     return lineEndOffset + 1;
 }
 
-export function parseTree(buffer: Buffer, filesWithHash = false) {
+export function parseTree(buffer: Buffer) {
     const entries: Tree = [];
     let offset = 0;
 
     while (offset < buffer.length) {
-        // format:
-        //   [mode]<space>[path]<nullchar>[oid]
-        // modes:
-        //   40000  -> 'tree'
-        //   100644 -> 'blob'
-        //   100755 -> 'blob'
-        //   120000 -> 'blob'
-        //   160000 -> 'commit'
-
+        // tree entry format:
+        //   [mode]<0x20(space)>[path]<0x00(nullchar)>[oid]
         const space = buffer.indexOf(32, offset + 5);
         const nullchar = buffer.indexOf(0, space + 1);
 
-        // isTree: mode === "40000", speculate here since only "tree" mode starts with "4"
-        const path = buffer.toString('utf8', space + 1, nullchar);
-        const isTree = buffer[offset] === 52;
+        // when mode starts with "4" it's a dir (tree)
+        // see: https://github.com/git/git/blob/142430338477d9d1bb25be66267225fb58498d92/compat/vcbuild/include/unistd.h#L74
+        const isTree = buffer[offset] === 52; // '4'.charCodeAt() === 52
 
-        entries.push(
-            isTree
-                ? {
-                      isTree,
-                      path,
-                      hash: buffer.slice(nullchar + 1, nullchar + 21)
-                  }
-                : {
-                      isTree,
-                      path,
-                      hash: filesWithHash ? buffer.slice(nullchar + 1, nullchar + 21) : null
-                  }
-        );
+        entries.push({
+            isTree,
+            path: buffer.toString('utf8', space + 1, nullchar),
+            hash: buffer.slice(nullchar + 1, nullchar + 21)
+        });
 
         offset = nullchar + 21;
     }

@@ -59,7 +59,7 @@ export type TreeEntryTree = {
 export type TreeEntryBlob = {
     isTree: false;
     path: string;
-    hash: Buffer | null;
+    hash: Buffer;
 };
 export type TreeEntry = TreeEntryTree | TreeEntryBlob;
 export type Tree = TreeEntry[];

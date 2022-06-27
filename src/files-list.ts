@@ -1,137 +1,142 @@
-import { ReadObjectByHash, ReadObjectByOid, ResolveRef, TreeEntry } from './types';
+import { ReadObjectByHash, ReadObjectByOid, ResolveRef, Tree, TreeEntry } from './types';
 import { parseAnnotatedTag, parseCommit, parseTree } from './parse-object.js';
 
-type FileEntry = { path: string; hash: Buffer };
+type ReadTree = (hash: Buffer) => Promise<Tree>;
+type FileEntry = { path: string; hash: string };
 type FileListEntry = string | FileEntry;
-type DeltaEntry = {
-    op: 'add' | 'modify' | 'remove';
-    path: string;
-    hash?: string;
-    prevHash?: string;
+type FileDeltaEntry = { path: string; hash: string | null };
+type FileDelta = {
+    add: FileDeltaEntry[];
+    modify: (FileDeltaEntry & { prevHash: string })[];
+    remove: FileDeltaEntry[];
 };
 
-async function accumulateFilesFromOid({
-    hash,
-    readObjectByHash,
-    filenames,
-    prefix,
+async function collectTreeFiles(
+    hash: Buffer,
+    readTree: ReadTree,
+    prefix: string,
+    filenames: FileListEntry[],
     filesWithHash = false
-}: {
-    readObjectByHash: ReadObjectByHash;
-    hash: Buffer;
-    prefix: string;
-    filenames: Array<any>;
-    filesWithHash?: boolean;
-}): Promise<void> {
-    const { object } = await readObjectByHash(hash);
-    const tree = parseTree(object, filesWithHash);
+): Promise<any> {
+    const tree = await readTree(hash);
     const tasks = [];
 
     for (const entry of tree) {
         if (entry.isTree) {
             tasks.push(
-                accumulateFilesFromOid({
-                    readObjectByHash,
-                    hash: entry.hash,
-                    prefix: `${prefix}${entry.path}/`,
+                collectTreeFiles(
+                    entry.hash,
+                    readTree,
+                    `${prefix}${entry.path}/`,
                     filenames,
                     filesWithHash
-                })
+                )
             );
         } else {
             const path = `${prefix}${entry.path}`;
-            filenames.push(filesWithHash ? { path, hash: entry.hash } : path);
+
+            if (filesWithHash) {
+                filenames.push({ path, hash: entry.hash.toString('hex') });
+            } else {
+                filenames.push(path);
+            }
         }
     }
 
-    return Promise.all(tasks).then();
+    return Promise.all(tasks);
 }
 
-async function findFilesDelta({
-    hash1,
-    hash2,
-    readObjectByHash,
-    delta,
-    prefix
-}: {
-    hash1: Buffer;
-    hash2: Buffer;
-    readObjectByHash: ReadObjectByHash;
-    delta: Array<DeltaEntry>;
-    prefix: string;
-}) {
-    const { object: treeObject1 } = await readObjectByHash(hash1);
-    const tree1 = parseTree(treeObject1, true);
-    const { object: treeObject2 } = await readObjectByHash(hash2);
-    const tree2 = parseTree(treeObject2, true);
-    const tree1map = new Map<string, TreeEntry>();
+function addEntryToDelta(target: FileDeltaEntry[], pathPrefix: string, entry: TreeEntry) {
+    target.push({
+        path: `${pathPrefix}${entry.path}`,
+        hash: entry.hash.toString('hex')
+    });
+}
 
-    for (const entry1 of tree1) {
-        tree1map.set(entry1.path, entry1);
+function addSubtreeToDelta(
+    target: FileDeltaEntry[],
+    pathPrefix: string,
+    entry: TreeEntry,
+    readTree: ReadTree
+) {
+    const entries: FileEntry[] = [];
+
+    return collectTreeFiles(
+        entry.hash,
+        readTree,
+        `${pathPrefix}${entry.path}/`,
+        entries,
+        true
+    ).then(() => {
+        for (const entry of entries) {
+            target.push({
+                path: `${pathPrefix}${entry.path}`,
+                hash: entry.hash
+            });
+        }
+    });
+}
+
+async function collectFilesDelta(
+    nextHash: Buffer,
+    prevHash: Buffer,
+    readTree: ReadTree,
+    prefix: string,
+    delta: FileDelta
+) {
+    const [nextTree, prevTree] = await Promise.all([readTree(nextHash), readTree(prevHash)]);
+    const nextTreeMap = new Map<string, TreeEntry>();
+
+    for (const nextEntry of nextTree) {
+        nextTreeMap.set(nextEntry.path, nextEntry);
     }
 
-    for (const entry2 of tree2) {
-        const entry1 = tree1map.get(entry2.path);
+    for (const prevEntry of prevTree) {
+        const nextEntry = nextTreeMap.get(prevEntry.path);
 
-        if (entry1 === undefined) {
-            delta.push({
-                op: 'remove',
-                path: `${prefix}${entry2.path}`,
-                hash: entry2.hash?.toString('hex')
-            });
+        if (nextEntry === undefined) {
+            if (prevEntry.isTree) {
+                await addSubtreeToDelta(delta.remove, prefix, prevEntry, readTree);
+            } else {
+                addEntryToDelta(delta.remove, prefix, prevEntry);
+            }
         } else {
-            tree1map.delete(entry2.path);
+            nextTreeMap.delete(prevEntry.path);
 
             // compare
-            if (entry1.isTree !== entry2.isTree) {
-                // todo
-                console.log('Not implemeneted');
-            } else if (!entry1.hash?.equals(entry2.hash as Buffer)) {
-                if (entry1.isTree && entry2.isTree) {
-                    await findFilesDelta({
-                        hash1: entry1.hash,
-                        hash2: entry2.hash,
-                        readObjectByHash,
-                        prefix: `${prefix}${entry2.path}/`,
+            if (nextEntry.isTree !== prevEntry.isTree) {
+                if (nextEntry.isTree) {
+                    addEntryToDelta(delta.remove, prefix, prevEntry);
+                    await addSubtreeToDelta(delta.add, prefix, nextEntry, readTree);
+                } else if (prevEntry.isTree) {
+                    addEntryToDelta(delta.add, prefix, nextEntry);
+                    await addSubtreeToDelta(delta.remove, prefix, prevEntry, readTree);
+                }
+            } else if (!nextEntry.hash?.equals(prevEntry.hash as Buffer)) {
+                if (nextEntry.isTree && prevEntry.isTree) {
+                    await collectFilesDelta(
+                        nextEntry.hash,
+                        prevEntry.hash,
+                        readTree,
+                        `${prefix}${prevEntry.path}/`,
                         delta
-                    });
+                    );
                 } else {
-                    delta.push({
-                        op: 'modify',
-                        path: `${prefix}${entry2.path}`,
-                        hash: entry2.hash?.toString('hex'),
-                        prevHash: entry1.hash?.toString('hex')
+                    delta.modify.push({
+                        path: `${prefix}${nextEntry.path}`,
+                        hash: nextEntry.hash.toString('hex'),
+                        prevHash: prevEntry.hash.toString('hex')
                     });
                 }
             }
         }
     }
 
-    for (const entry1 of tree1map.values()) {
-        if (entry1.isTree) {
-            // all removed
-            const removed: FileEntry[] = [];
-            await accumulateFilesFromOid({
-                readObjectByHash,
-                hash: entry1.hash,
-                filenames: removed,
-                prefix: `${prefix}${entry1.path}/`,
-                filesWithHash: true
-            }).then(() => {
-                for (const entry of removed) {
-                    delta.push({
-                        op: 'remove',
-                        path: `${prefix}${entry.path}`,
-                        hash: entry.hash.toString('hex')
-                    });
-                }
-            });
+    for (const nextEntry of nextTreeMap.values()) {
+        if (nextEntry.isTree) {
+            await addSubtreeToDelta(delta.add, prefix, nextEntry, readTree);
         } else {
-            delta.push({
-                op: 'add',
-                path: `${prefix}${entry1.path}`,
-                hash: entry1.hash?.toString('hex')
-            });
+            addEntryToDelta(delta.add, prefix, nextEntry);
         }
     }
 }
@@ -167,51 +172,83 @@ export function createFilesMethods(
 
         return treeOid;
     }
+    const treeCache = new Map<string, Tree>();
+    async function readTree(hash: Buffer) {
+        const oid = hash.toString('hex');
+        const cachedTree = oid && treeCache.get(oid);
+
+        if (cachedTree) {
+            return cachedTree;
+        }
+
+        const { object: treeObject } = cachedTree || (await readObjectByHash(hash));
+        const tree = parseTree(treeObject);
+
+        for (let i = 0; i < tree.length - 1; i++) {
+            if (
+                tree[i].path + (tree[i].isTree ? '/' : '') >
+                tree[i + 1].path + (tree[i + 1].isTree ? '/' : '')
+            ) {
+                console.log(
+                    tree[i].path,
+                    tree[i + 1].path,
+                    tree.map((f) => f.path)
+                );
+            }
+        }
+
+        if (oid) {
+            treeCache.set(oid, tree);
+        }
+
+        return tree;
+    }
 
     return {
         treeOidFromRef,
 
-        async listFiles(ref = 'HEAD') {
+        async listFiles<T extends boolean = false, R = T extends true ? FileEntry : string>(
+            ref = 'HEAD',
+            filesWithHash: T
+        ) {
             const treeOid = await treeOidFromRef(ref);
-            const filenames: FileListEntry[] = [];
+            const filenames: R[] = [];
 
-            await accumulateFilesFromOid({
-                hash: Buffer.from(treeOid, 'hex'),
-                readObjectByHash,
-                filenames,
-                prefix: ''
-            });
+            await collectTreeFiles(
+                Buffer.from(treeOid, 'hex'),
+                readTree,
+                '',
+                filenames as any, // FIXME
+                filesWithHash
+            );
 
             return filenames;
         },
 
-        async deltaFiles(
-            ref1 = 'HEAD',
-            ref2: string
-            // ref1 = "d81c26f1e40cff1e061ad5d4a53ddaabdac2d039",
-            // ref2 = "d02877e9d4a2ae5461de8dd45b0f7be0ce3d72dd"
-        ) {
-            if (!ref2) {
-                const oid = await resolveRef(ref1);
-                const commit = await readObjectByOid(oid);
+        async deltaFiles(nextRef = 'HEAD', prevRef: string) {
+            if (!prevRef) {
+                const prevOid = await resolveRef(nextRef);
+                const prevCommit = await readObjectByOid(prevOid);
 
-                ref2 = parseCommit(commit.object).parent[0];
+                prevRef = parseCommit(prevCommit.object).parent[0];
             }
 
-            const treeOid1 = await treeOidFromRef(ref1);
-            const treeOid2 = await treeOidFromRef(ref2);
-            // console.log(ref1, ref2);
-            // console.log(treeOid);
-            const delta: DeltaEntry[] = [];
+            const treeOid1 = await treeOidFromRef(nextRef);
+            const treeOid2 = await treeOidFromRef(prevRef);
+            const delta: FileDelta = {
+                add: [],
+                modify: [],
+                remove: []
+            };
 
             if (treeOid1 !== treeOid2) {
-                await findFilesDelta({
-                    hash1: Buffer.from(treeOid1, 'hex'),
-                    hash2: Buffer.from(treeOid2, 'hex'),
-                    readObjectByHash,
-                    delta,
-                    prefix: ''
-                });
+                await collectFilesDelta(
+                    Buffer.from(treeOid1, 'hex'),
+                    Buffer.from(treeOid2, 'hex'),
+                    readTree,
+                    '',
+                    delta as any // FIXME
+                );
             }
 
             return delta;
