@@ -1,4 +1,5 @@
 import { promises as fsPromises } from 'fs';
+import { join as pathJoin } from 'path';
 import { scanFs } from '@discoveryjs/scan-fs';
 import { isOid } from './utils.js';
 
@@ -55,6 +56,33 @@ export async function createRefIndex(gitdir: string) {
         return resolveRef(ref);
     };
 
+    const listRemotes = async () => {
+        const remotes = [];
+        const entries = await fsPromises.readdir(pathJoin(gitdir, 'refs/remotes'), {
+            withFileTypes: true
+        });
+
+        for (const entry of entries) {
+            if (entry.isDirectory()) {
+                remotes.push(entry.name);
+            }
+        }
+
+        return remotes;
+    };
+
+    const listBranches = (remote?: string) => {
+        if (remote) {
+            return listRefs(gitdir, `refs/remotes/${remote}/`);
+        } else {
+            return listRefs(gitdir, 'refs/heads/');
+        }
+    };
+
+    const listTags = () => {
+        return listRefs(gitdir, 'refs/tags/');
+    };
+
     return {
         expandRef,
         resolveRef,
@@ -67,16 +95,10 @@ export async function createRefIndex(gitdir: string) {
             }
         },
 
-        listBranches(remote?: string) {
-            if (remote) {
-                return listRefs(gitdir, `refs/remotes/${remote}/`);
-            } else {
-                return listRefs(gitdir, 'refs/heads/');
-            }
-        },
+        listRemotes,
+        listBranches,
+        listTags,
 
-        listTags() {
-            return listRefs(gitdir, 'refs/tags/');
         }
     };
 }
