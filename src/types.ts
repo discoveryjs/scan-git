@@ -39,7 +39,7 @@ export type AnnotatedTag = {
     object: string; // SHA-1 object id of object being tagged
     tagger: Author;
     message: string;
-    pgpsig?: string; // PGP signature (if present)
+    gpgsig?: string; // PGP signature (if present)
 };
 
 export type Commit = {
@@ -48,7 +48,7 @@ export type Commit = {
     author: Author;
     committer: Author;
     message: string;
-    pgpsig?: string; // PGP signature (if present)
+    gpgsig?: string; // PGP signature (if present)
 };
 
 export type TreeEntryTree = {

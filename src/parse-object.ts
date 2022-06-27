@@ -35,7 +35,7 @@ export function parseAnnotatedTag(object: Buffer) {
         object: '',
         tagger: NULL_AUTHOR,
         message: '',
-        pgpsig: undefined
+        gpgsig: undefined
     };
     const headersEnd = parseAnnotatedTagHeaders(content, tag);
 
@@ -43,7 +43,7 @@ export function parseAnnotatedTag(object: Buffer) {
 
     const gpgsigOffset = tag.message.indexOf('-----BEGIN PGP SIGNATURE-----');
     if (gpgsigOffset !== -1) {
-        tag.pgpsig = tag.message.slice(gpgsigOffset);
+        tag.gpgsig = tag.message.slice(gpgsigOffset);
         tag.message = tag.message.slice(0, gpgsigOffset - 1);
     }
 
@@ -53,6 +53,7 @@ export function parseAnnotatedTag(object: Buffer) {
 function parseAnnotatedTagHeaders(input: string, dict: AnnotatedTag) {
     let lineEndOffset = 0;
     let lineStartOffset = 0;
+    let prevKey: keyof AnnotatedTag = 'message';
 
     do {
         lineEndOffset = input.indexOf('\n', lineEndOffset + 1);
@@ -61,14 +62,17 @@ function parseAnnotatedTagHeaders(input: string, dict: AnnotatedTag) {
             break; // empty line is an end of headers
         }
 
-        const spaceOffset = input.indexOf(' ', lineStartOffset + 1);
-        const key = input.slice(lineStartOffset, spaceOffset) as keyof AnnotatedTag;
+        const spaceOffset = input.indexOf(' ', lineStartOffset);
+        const key = input.slice(lineStartOffset, spaceOffset) as keyof AnnotatedTag | '';
         const value = input.slice(spaceOffset + 1, lineEndOffset) as AnnotatedTag['type'];
 
-        if (key === 'tagger') {
+        if (key === '') {
+            dict[prevKey] += '\n' + value;
+        } else if (key === 'tagger') {
             dict[key] = parseAuthor(value);
         } else {
             dict[key] = value;
+            prevKey = key;
         }
 
         lineStartOffset = lineEndOffset + 1;
@@ -84,7 +88,7 @@ export function parseCommit(object: Buffer) {
         author: NULL_AUTHOR,
         committer: NULL_AUTHOR,
         message: '',
-        pgpdig: undefined
+        gpgsig: undefined
     } as Commit;
 
     const content = object.toString('utf8');
@@ -98,6 +102,7 @@ export function parseCommit(object: Buffer) {
 function parseCommitHeaders(input: string, dict: Commit) {
     let lineEndOffset = 0;
     let lineStartOffset = 0;
+    let prevKey: keyof Commit = 'message';
 
     do {
         lineEndOffset = input.indexOf('\n', lineEndOffset + 1);
@@ -106,16 +111,19 @@ function parseCommitHeaders(input: string, dict: Commit) {
             break; // empty line is an end of headers
         }
 
-        const spaceOffset = input.indexOf(' ', lineStartOffset + 1);
-        const key = input.slice(lineStartOffset, spaceOffset) as keyof Commit;
+        const spaceOffset = input.indexOf(' ', lineStartOffset);
+        const key = input.slice(lineStartOffset, spaceOffset) as keyof Commit | '';
         const value = input.slice(spaceOffset + 1, lineEndOffset);
 
-        if (key === 'parent') {
+        if (key === '') {
+            dict[prevKey] += '\n' + value;
+        } else if (key === 'parent') {
             dict[key].push(value);
         } else if (key === 'author' || key === 'committer') {
             dict[key] = parseAuthor(value);
         } else {
             dict[key] = value;
+            prevKey = key;
         }
 
         lineStartOffset = lineEndOffset + 1;
