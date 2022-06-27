@@ -23,6 +23,22 @@ export async function createGitReader(gitdir: string) {
         readObjectByOid,
         ...refIndex,
         ...createFilesMethods(readObjectByOid, readObjectByHash, refIndex.resolveRef),
-        ...createCommitMethods(readObjectByOid, refIndex.resolveRef)
+        ...createCommitMethods(readObjectByOid, refIndex.resolveRef),
+
+        async stat() {
+            const [refs, looseObjects, packedObjects] = await Promise.all([
+                refIndex.stat(),
+                looseObjectIndex.stat(),
+                packedObjectIndex.stat()
+            ]);
+
+            return {
+                refs,
+                objects: {
+                    loose: looseObjects,
+                    packed: packedObjects
+                }
+            };
+        }
     };
 }

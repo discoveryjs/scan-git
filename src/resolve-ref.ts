@@ -71,7 +71,7 @@ export async function createRefIndex(gitdir: string) {
         return remotes;
     };
 
-    const listBranches = (remote?: string) => {
+    const listBranches = (remote?: string | null) => {
         if (remote) {
             return listRefs(gitdir, `refs/remotes/${remote}/`);
         } else {
@@ -99,6 +99,19 @@ export async function createRefIndex(gitdir: string) {
         listBranches,
         listTags,
 
+        async stat() {
+            const remotes = [null, ...(await listRemotes())];
+
+            return {
+                remotes: (await Promise.all(remotes.map((remote) => listBranches(remote)))).map(
+                    (branches, idx) => ({
+                        remote: remotes[idx],
+                        branches
+                    })
+                ),
+                branches: await listBranches(),
+                tags: await listTags()
+            };
         }
     };
 }

@@ -1,7 +1,8 @@
+import { relative as pathRelative } from 'path';
 import { promises as fsPromises } from 'fs';
 import { inflateSync } from './fast-inflate.js';
 import { GitObject, InternalGitObjectContent, InternalGitObjectHeader } from './types.js';
-import { binarySearchHash } from './utils.js';
+import { binarySearchHash, objectsStatFromTypes } from './utils.js';
 
 type LooseObjectMap = Map<string, string>;
 
@@ -65,7 +66,7 @@ function createGetOidFromHash(looseObjectMap: Map<string, string>) {
     };
 }
 
-function parseLooseGitObjectHeader(buffer: Buffer): InternalGitObjectHeader {
+function parseLooseObjectHeader(buffer: Buffer): InternalGitObjectHeader {
     const spaceIndex = buffer.indexOf(32); // first space
     const nullIndex = buffer.indexOf(0, spaceIndex + 1); // first null is the end of header
     const type = buffer.toString('utf8', 0, spaceIndex) as GitObject['type'];
@@ -99,10 +100,10 @@ export async function createLooseObjectIndex(gitdir: string) {
             try {
                 fh = await fsPromises.open(filepath);
 
-                const headerBuffer = Buffer.alloc(64);
-                await fh.read(headerBuffer, 0, 64, 0);
+                const headerBuffer = Buffer.alloc(128);
+                await fh.read(headerBuffer, 0, 128, 0);
 
-                return parseLooseGitObjectHeader(inflateSync(headerBuffer));
+                return parseLooseObjectHeader(inflateSync(headerBuffer));
             } finally {
                 fh?.close();
             }
@@ -134,6 +135,47 @@ export async function createLooseObjectIndex(gitdir: string) {
             const oid = getOidFromHash(hash);
 
             return oid !== null ? readObjectByOid(oid) : null;
+        },
+
+        async stat() {
+            const files = [];
+            const objectsByType = Object.create(null);
+
+            for (const [oid, filename] of looseObjectMap) {
+                const [stat, objectHeader] = await Promise.all([
+                    fsPromises.stat(filename),
+                    readObjectHeaderByOid(oid)
+                ]);
+
+                if (objectHeader !== null) {
+                    if (objectHeader.type in objectsByType === false) {
+                        objectsByType[objectHeader.type] = {
+                            type: objectHeader.type,
+                            count: 0,
+                            size: 0,
+                            packedSize: 0
+                        };
+                    }
+
+                    objectsByType[objectHeader.type].count++;
+                    objectsByType[objectHeader.type].size += objectHeader.length;
+                    objectsByType[objectHeader.type].packedSize += stat.size;
+                }
+
+                files.push({
+                    filename: pathRelative(gitdir, filename),
+                    filesize: stat.size,
+                    object: {
+                        oid,
+                        ...objectHeader
+                    }
+                });
+            }
+
+            return {
+                objects: objectsStatFromTypes(Object.values(objectsByType)),
+                files
+            };
         }
     };
 }

@@ -1,7 +1,13 @@
-import { join as pathJoin } from 'path';
+import { join as pathJoin, relative as pathRelative } from 'path';
 import { promises as fsPromises } from 'fs';
 import { PackContent, readPackFile } from './packed-pack.js';
-import { InternalGitObjectContent, InternalGitObjectHeader } from './types.js';
+import {
+    InternalGitObjectContent,
+    InternalGitObjectHeader,
+    PackedObjectType,
+    ObjectsTypeStat
+} from './types.js';
+import { objectsStatFromTypes, sumObjectsStat } from './utils.js';
 
 export async function createPackedObjectIndex(gitdir: string) {
     function readObjectHeaderByHash(
@@ -57,6 +63,52 @@ export async function createPackedObjectIndex(gitdir: string) {
         readObjectByHash,
         readObjectByOid(oid: string) {
             return readObjectByHash(Buffer.from(oid, 'hex'));
+        },
+
+        async stat() {
+            const objectsByType: Record<PackedObjectType, ObjectsTypeStat[]> = Object.create(null);
+            const files = [];
+
+            for (const pack of packFiles) {
+                const packObjectsByType = await pack.objectsStat();
+
+                for (const stat of packObjectsByType) {
+                    objectsByType[stat.type] = objectsByType[stat.type] || [];
+                    objectsByType[stat.type].push(stat);
+                }
+
+                files.push({
+                    filename: pathRelative(gitdir, pack.filename),
+                    filesize: pack.filesize,
+                    objects: objectsStatFromTypes(packObjectsByType),
+                    index: {
+                        filename: pathRelative(gitdir, pack.index.filename),
+                        filesize: pack.index.filesize,
+                        namesBytes: pack.index.namesBytes,
+                        offsetsBytes: pack.index.offsetsBytes,
+                        largeOffsetsBytes: pack.index.largeOffsetsBytes
+                    },
+                    reverseIndex: pack.reverseIndex?.filename
+                        ? {
+                              filename: pathRelative(gitdir, pack.reverseIndex.filename),
+                              filesize: pack.reverseIndex.filesize
+                          }
+                        : null
+                });
+            }
+
+            return {
+                objects: objectsStatFromTypes(
+                    Object.entries(objectsByType).map(
+                        ([type, stat]) =>
+                            ({
+                                type,
+                                ...sumObjectsStat(stat)
+                            } as ObjectsTypeStat)
+                    )
+                ),
+                files
+            };
         }
     };
 }

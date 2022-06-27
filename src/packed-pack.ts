@@ -4,7 +4,7 @@ import { BufferCursor, checkFileHeader, readEncodedOffset, readVarIntLE } from '
 import { PackIndex, readPackIdxFile } from './packed-idx.js';
 import { PackReverseIndex, readPackRevFile } from './packed-rev.js';
 import { recostructDeltifiedObject } from './packed-deltified-object.js';
-import { InternalGitObjectContent, InternalGitObjectHeader } from './types.js';
+import { InternalGitObjectContent, InternalGitObjectHeader, ObjectsTypeStat } from './types.js';
 
 export type ReadObjectHeaderFromAllPacks = (
     hash: Buffer,
@@ -53,12 +53,31 @@ const buffers = new Array(5000);
 let reuseBufferCount = 0;
 
 export class PackContent {
+    static buildReverseIndex(pack: PackContent) {
+        const uint32View = new Uint32Array(pack.size);
+        const reverseIndex = Buffer.from(uint32View.buffer);
+
+        for (let i = 0; i < pack.size; i++) {
+            uint32View[i] = i;
+        }
+
+        uint32View.sort(
+            (a, b) => pack.index.getObjectOffsetByIndex(a) - pack.index.getObjectOffsetByIndex(b)
+        );
+
+        for (let i = 0; i < pack.size; i++) {
+            reverseIndex.writeUInt32BE(uint32View[i], i * 4);
+        }
+
+        return new PackReverseIndex(null, pack.filesize, pack.index, reverseIndex);
+    }
+
     cache: Map<number, InternalGitObjectContent>;
     filesize: number;
 
     constructor(
         public filename: string,
-        public objectNumber: number,
+        public size: number,
         private fh: fsPromises.FileHandle,
         public readObjectHeaderFromAllPacks: ReadObjectHeaderFromAllPacks,
         public readObjectFromAllPacks: ReadObjectFromAllPacks,
@@ -69,15 +88,15 @@ export class PackContent {
         this.filesize = statSync(filename).size;
     }
 
-    getOffset(hash: Buffer) {
-        return this.index.getObjectOffset(hash);
+    getObjectOffset(hash: Buffer) {
+        return this.index.getObjectOffsetByHash(hash);
     }
     getObjectIndex(hash: Buffer) {
-        return this.index.getObjectIndex(hash);
+        return this.index.getObjectIndexByHash(hash);
     }
 
     readObjectHeader(hash: Buffer) {
-        const offset = this.getOffset(hash);
+        const offset = this.getObjectOffset(hash);
 
         if (offset !== undefined) {
             return this.readObjectHeaderFromFile(offset);
@@ -99,7 +118,7 @@ export class PackContent {
     }
 
     readObject(hash: Buffer) {
-        const offset = this.getOffset(hash);
+        const offset = this.getObjectOffset(hash);
 
         if (offset !== undefined) {
             return this.readObjectFromFile(offset);
@@ -194,7 +213,7 @@ export class PackContent {
         let type: Type;
 
         // Handle undeltified objects
-        const objSize = length + 16;
+        const objSize = length + 32;
         const objOffset = offset + reader.offset;
         const bufferLeft = header.byteLength - reader.offset;
         const buffer =
@@ -237,6 +256,72 @@ export class PackContent {
         this.cache.set(offset, result);
 
         return result;
+    }
+
+    async objectsStat(): Promise<ObjectsTypeStat[]> {
+        const objectsByType = Object.fromEntries(
+            Object.entries(types).map(([btype, type]) => [
+                btype,
+                {
+                    type,
+                    count: 0,
+                    size: 0,
+                    packedSize: 0
+                }
+            ])
+        );
+
+        if (this.reverseIndex === null) {
+            this.reverseIndex = PackContent.buildReverseIndex(this);
+        }
+
+        const readBuffer = Buffer.allocUnsafe(4 * 1024 * 1024);
+        const reader = new BufferCursor(readBuffer);
+        let nextOffset = this.index.getObjectOffsetByIndex(
+            this.reverseIndex.indexByOffsetToIndexByName(0)
+        );
+
+        reader.offset = readBuffer.byteLength;
+
+        for (let i = 0, offsetBase = 0; i < this.index.size; i++) {
+            const offset = nextOffset;
+            const relOffset = offset - offsetBase;
+
+            nextOffset =
+                i < this.index.size - 1
+                    ? this.index.getObjectOffsetByIndex(
+                          this.reverseIndex.indexByOffsetToIndexByName(i)
+                      )
+                    : this.filesize - 20;
+
+            if (relOffset > reader.bytesLeft - 32) {
+                await this.read(readBuffer, offset);
+                reader.offset = 0;
+                offsetBase = offset;
+            } else {
+                reader.offset = relOffset;
+            }
+
+            // n-byte type and length (3-bit type, (n-1)*7+4-bit length) compressed data
+            const firstByte = reader.readUInt8();
+            const btype = (firstByte & HEADER_TYPE) as PackedType;
+
+            if (btype === INVALID || btype === RESERVED) {
+                throw new Error(`Unrecognized type: 0b${btype.toString(2)}`);
+            }
+
+            // https://git-scm.com/docs/pack-format#_size_encoding
+            let length = firstByte & HEADER_LENGTH;
+            if (firstByte & HEADER_MULTIBYTE_LENGTH) {
+                length |= readVarIntLE(reader) << 4;
+            }
+
+            objectsByType[btype].count++;
+            objectsByType[btype].size += length;
+            objectsByType[btype].packedSize += nextOffset - offset;
+        }
+
+        return Object.values(objectsByType).filter((stat) => stat.count > 0);
     }
 }
 

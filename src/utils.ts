@@ -1,3 +1,5 @@
+import { ObjectsStat, ObjectsStatWithTypes, ObjectsTypeStat } from './types';
+
 export function isOid(value: unknown) {
     return typeof value === 'string' && value.length === 40 && /[0-9a-f]{40}/.test(value);
 }
@@ -48,7 +50,13 @@ export class BufferCursor {
     eof() {
         return this.#offset >= this.buffer.length;
     }
+    get bytesLeft() {
+        return this.buffer.byteLength - this.#offset;
+    }
 
+    set offset(value: number) {
+        this.#offset = value;
+    }
     get offset() {
         return this.#offset;
     }
@@ -120,14 +128,18 @@ export function binarySearchHash(hashes: Buffer, hash: Buffer, l: number, h: num
 //   )
 // );
 
-export function binarySearchUint32(buffer: Buffer, number: number, fn: (value: number) => number) {
+export function binarySearchUint32(
+    buffer: Buffer,
+    value: number,
+    readValueByOffset = (index: number) => buffer.readUint32BE(index)
+) {
     let l = 0;
     let h = buffer.byteLength / 4 - 1;
 
     while (l <= h) {
         const m = l + ((h - l) >> 1);
         const mo = m * 4;
-        const res = number - fn(buffer.readUint32BE(mo));
+        const res = value - readValueByOffset(mo);
 
         if (res === 0) {
             return m;
@@ -167,4 +179,27 @@ export function checkFileHeader(
             `Bad version "${actualVersion}" in ${filename}. (Only version "${expectedVersion}" is supported)`
         );
     }
+}
+
+export function sumObjectsStat(stats: ObjectsStat[]) {
+    const result: ObjectsStat = {
+        count: 0,
+        size: 0,
+        packedSize: 0
+    };
+
+    for (const stat of stats) {
+        result.count += stat.count;
+        result.size += stat.size;
+        result.packedSize += stat.packedSize;
+    }
+
+    return result;
+}
+
+export function objectsStatFromTypes(types: ObjectsTypeStat[]) {
+    return {
+        ...sumObjectsStat(types),
+        types
+    } as ObjectsStatWithTypes;
 }

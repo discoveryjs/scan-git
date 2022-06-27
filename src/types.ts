@@ -11,6 +11,16 @@ export type ResolveRef = (ref: string) => Promise<string>;
 export type LooseObjectIndex = Awaited<ReturnType<typeof createLooseObjectIndex>>;
 export type PackedObjectIndex = Awaited<ReturnType<typeof createPackedObjectIndex>>;
 
+export type PackedObjectType =
+    | 'invalid'
+    | 'commit'
+    | 'tree'
+    | 'blob'
+    | 'reserved'
+    | 'tag'
+    | 'ofs_delta'
+    | 'ref_delta';
+
 export type CommitObject = { type: 'commit' };
 export type TagObject = { type: 'tag' };
 export type TreeObject = { type: 'tree' };
@@ -63,3 +73,15 @@ export type TreeEntryBlob = {
 };
 export type TreeEntry = TreeEntryTree | TreeEntryBlob;
 export type Tree = TreeEntry[];
+
+export type ObjectsStat = {
+    count: number;
+    size: number;
+    packedSize: number;
+};
+export type ObjectsStatWithTypes = ObjectsStat & {
+    types: ObjectsTypeStat[];
+};
+export type ObjectsTypeStat = {
+    type: PackedObjectType;
+} & ObjectsStat;
