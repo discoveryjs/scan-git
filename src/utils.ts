@@ -2,13 +2,26 @@ export function isOid(value: unknown) {
     return typeof value === 'string' && value.length === 40 && /[0-9a-f]{40}/.test(value);
 }
 
-export function decodeVarInt(reader: BufferCursor) {
-    let byte = 0;
+// https://git-scm.com/docs/pack-format
+// offset encoding: n bytes with MSB set in all but the last one.
+// The offset is then the number constructed by
+// concatenating the lower 7 bit of each byte, and
+// for n >= 2 adding 2^7 + 2^14 + ... + 2^(7*(n-1))
+// to the result.
+export function readEncodedOffset(reader: BufferCursor) {
     let result = -1;
+    let byte = 0;
 
     do {
         byte = reader.readUInt8();
-        result = ((result + 1) << 7) | (byte & 0b01111111);
+
+        // Note: An encoded offset can be greater than int32, so we can't use binary ops
+        // for the result to avoid an overflow. As an alternative a BigInt for the result
+        // might be used but it involves unwanted BigInt<->Number conversions.
+        //
+        // The expression is equivalent to:
+        //   result = ((result + 1) << 7) | (byte & 0b0111111)
+        result = (result + 1) * 128 + (byte & 0b01111111);
     } while (byte & 0b10000000);
 
     return result;

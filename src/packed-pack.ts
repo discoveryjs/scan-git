@@ -1,6 +1,6 @@
 import { promises as fsPromises, statSync } from 'fs';
 import { inflateSync } from './fast-inflate.js';
-import { BufferCursor, checkFileHeader, decodeVarInt, readVarIntLE } from './utils.js';
+import { BufferCursor, checkFileHeader, readEncodedOffset, readVarIntLE } from './utils.js';
 import { PackIndex, readPackIdxFile } from './packed-idx.js';
 import { PackReverseIndex, readPackRevFile } from './packed-rev.js';
 import { recostructDeltifiedObject } from './packed-deltified-object.js';
@@ -112,11 +112,11 @@ export class PackContent {
         return this.fh.read(buffer, 0, buffer.byteLength, offset);
     }
 
-    private async readObjectPreludeFromFile(start: number) {
+    private async readObjectPreludeFromFile(offset: number) {
         const header =
             reuseBufferCount > 0 ? buffers[--reuseBufferCount] : Buffer.allocUnsafe(4096);
 
-        await this.read(header, start);
+        await this.read(header, offset);
 
         const reader = new BufferCursor(header);
 
@@ -141,7 +141,7 @@ export class PackContent {
         // to reconstruct the object. The difference between them is, ref-delta directly encodes base object name.
         // If the base object is in the same pack, ofs-delta encodes the offset of the base object in the pack instead.
         if (btype === OFS_DELTA) {
-            deltaRef = start - decodeVarInt(reader);
+            deltaRef = offset - readEncodedOffset(reader);
         } else if (btype === REF_DELTA) {
             deltaRef = Buffer.from(reader.slice(20));
         }
