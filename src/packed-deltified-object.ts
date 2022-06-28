@@ -1,5 +1,5 @@
 import * as assert from 'assert';
-import { BufferCursor, readVarIntLE } from './utils.js';
+import { BufferCursor, readVarIntLE } from './utils/buffer.js';
 
 function readCompactLE(reader: BufferCursor, flags: number) {
     let result = 0;

@@ -1,5 +1,6 @@
 import { promises as fsPromises } from 'fs';
-import { binarySearchHash, checkFileHeader } from './utils.js';
+import { binarySearchHash } from './utils/binary-search.js';
+import { checkFileHeader } from './utils/file.js';
 
 export class PackIndex {
     namesBytes: number;

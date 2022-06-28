@@ -1,10 +1,11 @@
 import { promises as fsPromises, statSync } from 'fs';
 import { inflateSync } from './fast-inflate.js';
-import { BufferCursor, checkFileHeader, readEncodedOffset, readVarIntLE } from './utils.js';
+import { BufferCursor, readEncodedOffset, readVarIntLE } from './utils/buffer.js';
 import { PackIndex, readPackIdxFile } from './packed-idx.js';
 import { PackReverseIndex, readPackRevFile } from './packed-rev.js';
 import { recostructDeltifiedObject } from './packed-deltified-object.js';
 import { InternalGitObjectContent, InternalGitObjectHeader, ObjectsTypeStat } from './types.js';
+import { checkFileHeader } from './utils/file.js';
 
 export type ReadObjectHeaderFromAllPacks = (
     hash: Buffer,

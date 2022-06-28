@@ -1,7 +1,6 @@
 import { promises as fsPromises } from 'fs';
 import { join as pathJoin } from 'path';
 import { scanFs } from '@discoveryjs/scan-fs';
-import { isOid } from './utils.js';
 
 // @see https://git-scm.com/docs/git-rev-parse.html#_specifying_revisions
 const refpaths = (ref: string) => [
@@ -12,6 +11,10 @@ const refpaths = (ref: string) => [
     `refs/remotes/${ref}`,
     `refs/remotes/${ref}/HEAD`
 ];
+
+function isOid(value: unknown) {
+    return typeof value === 'string' && value.length === 40 && /[0-9a-f]{40}/.test(value);
+}
 
 export async function createRefIndex(gitdir: string) {
     const packedRefs = await readPackedRefs(gitdir);

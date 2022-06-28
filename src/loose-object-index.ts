@@ -2,7 +2,8 @@ import { relative as pathRelative } from 'path';
 import { promises as fsPromises } from 'fs';
 import { inflateSync } from './fast-inflate.js';
 import { GitObject, InternalGitObjectContent, InternalGitObjectHeader } from './types.js';
-import { binarySearchHash, objectsStatFromTypes } from './utils.js';
+import { binarySearchHash } from './utils/binary-search.js';
+import { objectsStatFromTypes } from './utils/stat.js';
 
 type LooseObjectMap = Map<string, string>;
 

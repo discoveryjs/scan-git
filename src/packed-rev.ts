@@ -1,6 +1,7 @@
 import { existsSync, promises as fsPromises } from 'fs';
 import { PackIndex } from './packed-idx.js';
-import { binarySearchUint32, checkFileHeader } from './utils.js';
+import { binarySearchUint32 } from './utils/binary-search.js';
+import { checkFileHeader } from './utils/file.js';
 
 export class PackReverseIndex {
     filesize: number;

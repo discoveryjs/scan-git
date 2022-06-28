@@ -7,7 +7,7 @@ import {
     PackedObjectType,
     ObjectsTypeStat
 } from './types.js';
-import { objectsStatFromTypes, sumObjectsStat } from './utils.js';
+import { objectsStatFromTypes, sumObjectsStat } from './utils/stat.js';
 
 export async function createPackedObjectIndex(gitdir: string) {
     function readObjectHeaderByHash(
