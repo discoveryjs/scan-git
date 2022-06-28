@@ -3,7 +3,7 @@ import { promises as fsPromises } from 'fs';
 import { inflateSync } from './fast-inflate.js';
 import { GitObject, InternalGitObjectContent, InternalGitObjectHeader } from './types.js';
 import { binarySearchHash } from './utils/binary-search.js';
-import { objectsStatFromTypes } from './utils/stat.js';
+import { createObjectsTypeStat, objectsStatFromTypes } from './utils/stat.js';
 
 type LooseObjectMap = Map<string, string>;
 
@@ -150,12 +150,7 @@ export async function createLooseObjectIndex(gitdir: string) {
 
                 if (objectHeader !== null) {
                     if (objectHeader.type in objectsByType === false) {
-                        objectsByType[objectHeader.type] = {
-                            type: objectHeader.type,
-                            count: 0,
-                            size: 0,
-                            packedSize: 0
-                        };
+                        objectsByType[objectHeader.type] = createObjectsTypeStat(objectHeader.type);
                     }
 
                     objectsByType[objectHeader.type].count++;

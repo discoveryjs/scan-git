@@ -6,6 +6,7 @@ import { PackReverseIndex, readPackRevFile } from './packed-rev.js';
 import { recostructDeltifiedObject } from './packed-deltified-object.js';
 import { InternalGitObjectContent, InternalGitObjectHeader, ObjectsTypeStat } from './types.js';
 import { checkFileHeader } from './utils/file.js';
+import { createObjectsTypeStat } from './utils/stat.js';
 
 export type ReadObjectHeaderFromAllPacks = (
     hash: Buffer,
@@ -122,7 +123,7 @@ export class PackContent {
             return this.readObjectFromFile(offset);
         }
 
-        return this.readObjectFromAllPacks(hash, this);
+        return this.readObjectFromAllPacks(hash);
     }
 
     private read(buffer: Buffer, offset: number) {
@@ -253,12 +254,7 @@ export class PackContent {
     }
 
     async objectsStat(): Promise<ObjectsTypeStat[]> {
-        const objectsByType = types.map((type) => ({
-            type,
-            count: 0,
-            size: 0,
-            packedSize: 0
-        }));
+        const objectsByType = types.map(createObjectsTypeStat);
 
         if (this.reverseIndex === null) {
             this.reverseIndex = PackContent.buildReverseIndex(this);
