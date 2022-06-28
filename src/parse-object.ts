@@ -1,6 +1,6 @@
-import { Author, AnnotatedTag, Commit, Tree } from './types';
+import { Contributor, AnnotatedTag, Commit, Tree } from './types';
 
-const NULL_AUTHOR: Author = {
+const NULL_CONTRIBUTOR: Contributor = {
     name: 'Unknown',
     email: 'unknown@unknown.com',
     timestamp: 0,
@@ -16,7 +16,7 @@ export function parseTimezoneOffset(offset: string) {
     return norm === 0 ? norm : -norm;
 }
 
-function parseAuthor(input: string): Author {
+function parseContributor(input: string): Contributor {
     const [, name, email, timestamp, timezone] = input.match(/^(.*) <(.*)> (\d*) (\S*)$/) || [];
 
     return {
@@ -33,7 +33,7 @@ export function parseAnnotatedTag(object: Buffer) {
         tag: '',
         type: 'tag',
         object: '',
-        tagger: NULL_AUTHOR,
+        tagger: NULL_CONTRIBUTOR,
         message: '',
         gpgsig: undefined
     };
@@ -50,7 +50,7 @@ export function parseAnnotatedTag(object: Buffer) {
     return tag as AnnotatedTag;
 }
 
-function parseAnnotatedTagHeaders(input: string, dict: AnnotatedTag) {
+function parseAnnotatedTagHeaders(input: string, tag: AnnotatedTag) {
     let lineEndOffset = 0;
     let lineStartOffset = 0;
     let prevKey: keyof AnnotatedTag = 'message';
@@ -67,11 +67,11 @@ function parseAnnotatedTagHeaders(input: string, dict: AnnotatedTag) {
         const value = input.slice(spaceOffset + 1, lineEndOffset) as AnnotatedTag['type'];
 
         if (key === '') {
-            dict[prevKey] += '\n' + value;
+            tag[prevKey] += '\n' + value;
         } else if (key === 'tagger') {
-            dict[key] = parseAuthor(value);
+            tag[key] = parseContributor(value);
         } else {
-            dict[key] = value;
+            tag[key] = value;
             prevKey = key;
         }
 
@@ -85,8 +85,8 @@ export function parseCommit(object: Buffer) {
     const commit = {
         tree: '',
         parent: [],
-        author: NULL_AUTHOR,
-        committer: NULL_AUTHOR,
+        author: NULL_CONTRIBUTOR,
+        committer: NULL_CONTRIBUTOR,
         message: '',
         gpgsig: undefined
     } as Commit;
@@ -99,7 +99,7 @@ export function parseCommit(object: Buffer) {
     return commit;
 }
 
-function parseCommitHeaders(input: string, dict: Commit) {
+function parseCommitHeaders(input: string, commit: Commit) {
     let lineEndOffset = 0;
     let lineStartOffset = 0;
     let prevKey: keyof Commit = 'message';
@@ -116,13 +116,13 @@ function parseCommitHeaders(input: string, dict: Commit) {
         const value = input.slice(spaceOffset + 1, lineEndOffset);
 
         if (key === '') {
-            dict[prevKey] += '\n' + value;
+            commit[prevKey] += '\n' + value;
         } else if (key === 'parent') {
-            dict[key].push(value);
+            commit[key].push(value);
         } else if (key === 'author' || key === 'committer') {
-            dict[key] = parseAuthor(value);
+            commit[key] = parseContributor(value);
         } else {
-            dict[key] = value;
+            commit[key] = value;
             prevKey = key;
         }
 
@@ -138,7 +138,7 @@ export function parseTree(buffer: Buffer) {
 
     while (offset < buffer.length) {
         // tree entry format:
-        //   [mode]<0x20(space)>[path]<0x00(nullchar)>[oid]
+        //   [mode] <0x20(space)> [path] <0x00(nullchar)> [oid]
         const space = buffer.indexOf(32, offset + 5);
         const nullchar = buffer.indexOf(0, space + 1);
 

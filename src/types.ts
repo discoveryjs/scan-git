@@ -36,7 +36,7 @@ export type InternalGitObjectContent = {
     object: Buffer;
 };
 
-export type Author = {
+export type Contributor = {
     name: string;
     email: string;
     timestamp: number; // UTC Unix timestamp in seconds
@@ -46,17 +46,18 @@ export type Author = {
 export type AnnotatedTag = {
     tag: string; // the tag name
     type: 'blob' | 'tree' | 'commit' | 'tag'; // the type of the object being tagged
-    object: string; // SHA-1 object id of object being tagged
-    tagger: Author;
+    object: string; // object id of object being tagged
+    tagger: Contributor;
     message: string;
     gpgsig?: string; // PGP signature (if present)
 };
 
+export type LogCommit = { oid: string } & Commit;
 export type Commit = {
-    tree: string; // SHA-1 object id of corresponding file tree
-    parent: string[]; // an array of zero or more SHA-1 object ids
-    author: Author;
-    committer: Author;
+    tree: string; // object id of corresponding file tree
+    parent: string[]; // an array of zero or more object ids
+    author: Contributor;
+    committer: Contributor;
     message: string;
     gpgsig?: string; // PGP signature (if present)
 };

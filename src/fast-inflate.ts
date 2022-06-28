@@ -4,7 +4,7 @@ import { createInflate, constants, Inflate } from 'zlib';
 // to avoid unnecessary work on init and memory consumption.
 // Inspired by: https://github.com/timotejroiko/fast-zlib
 
-// avoid TypeScript warnings
+// Fixing TypeScript warnings
 type PatchedInflate = Inflate & {
     on: any;
     _handle: any;
@@ -12,7 +12,7 @@ type PatchedInflate = Inflate & {
     [key: symbol]: any;
 };
 
-// main zlib inflate object
+// Main zlib inflate object
 const reusableInflate = createInflate() as PatchedInflate;
 const _handle = reusableInflate._handle;
 const _kError =
@@ -27,7 +27,7 @@ reusableInflate.on = () => {}; // prevent adding 'error' listeners on every _pro
 export function inflateSync(data: Buffer) {
     let result;
 
-    // reset state and restore _handle since it set to null on _processChunk()
+    // Reset state and restore _handle since it set to null on _processChunk()
     reusableInflate._handle = _handle;
     reusableInflate[_kError] = null;
     reusableInflate.reset();

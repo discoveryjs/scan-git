@@ -1,4 +1,4 @@
-import { Commit, ReadObjectByOid, ResolveRef } from './types';
+import { LogCommit, ReadObjectByOid, ResolveRef } from './types';
 import { parseAnnotatedTag, parseCommit } from './parse-object.js';
 
 async function resolveRefToCommit(oid: string, readObject: ReadObjectByOid): Promise<string> {
@@ -16,7 +16,7 @@ async function resolveRefToCommit(oid: string, readObject: ReadObjectByOid): Pro
     return oid;
 }
 
-function findMaxAgedCommit(commits: ReadCommit[]) {
+function findMaxAgedCommit(commits: LogCommit[]) {
     let result = commits[0];
     let maxDate = result.committer.timestamp;
 
@@ -30,8 +30,6 @@ function findMaxAgedCommit(commits: ReadCommit[]) {
     return result;
 }
 
-type ReadCommit = { oid: string } & Commit;
-
 export function createCommitMethods(readObjectByOid: ReadObjectByOid, resolveRef: ResolveRef) {
     async function commitOidFromRef(ref: string) {
         const oid = await resolveRef(ref);
@@ -40,7 +38,7 @@ export function createCommitMethods(readObjectByOid: ReadObjectByOid, resolveRef
         return commitOid;
     }
 
-    async function readCommit(oid: string): Promise<ReadCommit> {
+    async function readCommit(oid: string): Promise<LogCommit> {
         const { object } = await readObjectByOid(oid);
 
         return { oid, ...parseCommit(object) };
@@ -49,10 +47,10 @@ export function createCommitMethods(readObjectByOid: ReadObjectByOid, resolveRef
     return {
         commitOidFromRef,
 
-        async log({ ref = 'HEAD', depth = 20 }: { ref?: string; depth?: number } = {}) {
+        async log({ ref = 'HEAD', depth = 50 }: { ref?: string; depth?: number } = {}) {
             const commitOid = await commitOidFromRef(ref);
-            const commits: ReadCommit[] = [];
-            const candidates = new Set<ReadCommit>([await readCommit(commitOid)]);
+            const commits: LogCommit[] = [];
+            const candidates = new Set<LogCommit>([await readCommit(commitOid)]);
             const seen = new Set<string>();
 
             while (commits.length < depth && candidates.size > 0) {
