@@ -44,52 +44,60 @@ export function readVarIntLE(reader: BufferCursor) {
 }
 
 export class BufferCursor {
-    #offset = 0;
+    offset = 0;
     constructor(public buffer: Buffer) {}
 
-    eof() {
-        return this.#offset >= this.buffer.length;
+    get eof() {
+        return this.offset >= this.buffer.length;
     }
     get bytesLeft() {
-        return this.buffer.byteLength - this.#offset;
-    }
-
-    set offset(value: number) {
-        this.#offset = value;
-    }
-    get offset() {
-        return this.#offset;
+        return this.buffer.byteLength - this.offset;
     }
 
     slice(length: number) {
-        return this.buffer.slice(this.#offset, (this.#offset += length));
+        return this.buffer.slice(this.offset, (this.offset += length));
     }
 
     toString(enc: BufferEncoding, length: number) {
-        return this.buffer.toString(enc, this.#offset, (this.#offset += length));
+        return this.buffer.toString(enc, this.offset, (this.offset += length));
     }
 
     write(value: string, length: number, enc?: BufferEncoding) {
-        const bytesWritten = this.buffer.write(value, this.#offset, length, enc);
-        this.#offset += bytesWritten;
+        const bytesWritten = this.buffer.write(value, this.offset, length, enc);
+        this.offset += bytesWritten;
         return bytesWritten;
     }
 
     copyFrom(source: Buffer, sourceStart?: number, sourceEnd?: number) {
-        const copiedBytes = source.copy(this.buffer, this.#offset, sourceStart, sourceEnd);
-        this.#offset += copiedBytes;
+        const copiedBytes = source.copy(this.buffer, this.offset, sourceStart, sourceEnd);
+
+        this.offset += copiedBytes;
+
+        return copiedBytes;
+    }
+
+    copyTo(target: Buffer, targetStart = 0, length = this.bytesLeft) {
+        const copiedBytes = this.buffer.copy(
+            target,
+            targetStart,
+            this.offset,
+            this.offset + length
+        );
+
+        this.offset += copiedBytes;
+
         return copiedBytes;
     }
 
     readUInt8() {
-        const r = this.buffer.readUInt8(this.#offset);
-        this.#offset += 1;
+        const r = this.buffer.readUInt8(this.offset);
+        this.offset += 1;
         return r;
     }
 
     readUInt32BE() {
-        const r = this.buffer.readUInt32BE(this.#offset);
-        this.#offset += 4;
+        const r = this.buffer.readUInt32BE(this.offset);
+        this.offset += 4;
         return r;
     }
 }
