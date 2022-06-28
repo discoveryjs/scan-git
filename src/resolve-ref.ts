@@ -1,15 +1,15 @@
-import { promises as fsPromises } from 'fs';
+import { promises as fsPromises, existsSync } from 'fs';
 import { join as pathJoin } from 'path';
 import { scanFs } from '@discoveryjs/scan-fs';
 
 // @see https://git-scm.com/docs/git-rev-parse.html#_specifying_revisions
 const refpaths = (ref: string) => [
-    `${ref}`,
-    `refs/${ref}`,
-    `refs/tags/${ref}`,
-    `refs/heads/${ref}`,
-    `refs/remotes/${ref}`,
-    `refs/remotes/${ref}/HEAD`
+    ref,
+    pathJoin('refs', ref),
+    pathJoin('refs', 'tags', ref),
+    pathJoin('refs', 'heads', ref),
+    pathJoin('refs', 'remotes', ref),
+    pathJoin('refs', 'remotes', ref, 'HEAD')
 ];
 
 function isOid(value: unknown) {
@@ -34,7 +34,7 @@ export async function createRefIndex(gitdir: string) {
             }
 
             try {
-                await fsPromises.stat(`${gitdir}/${ref}`);
+                await fsPromises.stat(pathJoin(gitdir, ref));
                 return ref;
             } catch {}
         }
@@ -54,14 +54,14 @@ export async function createRefIndex(gitdir: string) {
         }
 
         const expandedRef = await expandRef(ref);
-        ref = (await fsPromises.readFile(`${gitdir}/${expandedRef}`, 'utf8')).trimEnd();
+        ref = (await fsPromises.readFile(pathJoin(gitdir, expandedRef), 'utf8')).trimEnd();
 
         return resolveRef(ref);
     };
 
     const listRemotes = async () => {
         const remotes = [];
-        const entries = await fsPromises.readdir(pathJoin(gitdir, 'refs/remotes'), {
+        const entries = await fsPromises.readdir(pathJoin(gitdir, 'refs', 'remotes'), {
             withFileTypes: true
         });
 
@@ -123,13 +123,13 @@ export async function createRefIndex(gitdir: string) {
 function compareRefNames(a: string, b: string) {
     const _a = a.replace(/\^\{\}$/, '');
     const _b = b.replace(/\^\{\}$/, '');
-    const tmp = -(_a < _b) || Number(_a > _b);
+    const cmp = -(_a < _b) || Number(_a > _b);
 
-    if (tmp === 0) {
+    if (cmp === 0) {
         return a.endsWith('^{}') ? 1 : -1;
     }
 
-    return tmp;
+    return cmp;
 }
 
 // List all the refs that match the `filepath` prefix
@@ -138,7 +138,7 @@ async function listRefs(gitdir: string, prefix: string) {
     const files = new Set<string>();
 
     try {
-        for (const file of await scanFs({ basedir: `${gitdir}/${prefix}` })) {
+        for (const file of await scanFs({ basedir: pathJoin(gitdir, prefix) })) {
             files.add(file.path);
         }
     } catch (e) {}
@@ -155,29 +155,35 @@ async function listRefs(gitdir: string, prefix: string) {
 }
 
 async function readPackedRefs(gitdir: string) {
-    const text = await fsPromises.readFile(`${gitdir}/packed-refs`, 'utf8');
-    const refs = new Map<string, string>();
-    let ref = null;
+    const packedRefsFilename = pathJoin(gitdir, 'packed-refs');
+    const packedRefs = new Map<string, string>();
 
-    for (const line of text.trim().split('\n')) {
-        if (line.startsWith('#')) {
-            continue;
-        }
+    if (existsSync(packedRefsFilename)) {
+        const packedRefsContent = await fsPromises.readFile(packedRefsFilename, 'utf8');
+        let ref = null;
 
-        if (line.startsWith('^')) {
-            // This is a oid for the commit associated with the annotated tag immediately preceding this line.
-            // Trim off the '^'
-            const oid = line.slice(1);
-            // The tagname^{} syntax is based on the output of `git show-ref --tags -d`
-            refs.set(ref + '^{}', oid);
-        } else {
-            // This is an oid followed by the ref name
-            const i = line.indexOf(' ');
-            const oid = line.slice(0, i);
-            ref = line.slice(i + 1);
-            refs.set(ref, oid);
+        for (const line of packedRefsContent.trim().split('\n')) {
+            if (line.startsWith('#')) {
+                continue;
+            }
+
+            if (line.startsWith('^')) {
+                // This is a oid for the commit associated with the annotated tag immediately preceding this line.
+                // Trim off the '^'
+                const oid = line.slice(1);
+
+                // The tagname^{} syntax is based on the output of `git show-ref --tags -d`
+                packedRefs.set(ref + '^{}', oid);
+            } else {
+                // This is an oid followed by the ref name
+                const spaceOffset = line.indexOf(' ');
+                const oid = line.slice(0, spaceOffset);
+
+                ref = line.slice(spaceOffset + 1);
+                packedRefs.set(ref, oid);
+            }
         }
     }
 
-    return refs;
+    return packedRefs;
 }
