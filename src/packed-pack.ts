@@ -18,37 +18,34 @@ export type ReadObjectFromAllPacks = (
 
 type Type = 'commit' | 'tree' | 'blob' | 'tag';
 type PackedType =
-    | typeof INVALID
-    | typeof COMMIT
-    | typeof TREE
-    | typeof BLOB
-    | typeof RESERVED
-    | typeof TAG
-    | typeof OFS_DELTA
-    | typeof REF_DELTA;
+    | typeof OBJ_INVALID
+    | typeof OBJ_COMMIT
+    | typeof OBJ_TREE
+    | typeof OBJ_BLOB
+    | typeof OBJ_RESERVED
+    | typeof OBJ_TAG
+    | typeof OBJ_OFS_DELTA
+    | typeof OBJ_REF_DELTA;
 
-const HEADER_MULTIBYTE_LENGTH = 0b10000000;
-const HEADER_TYPE = 0b01110000;
-const HEADER_LENGTH = 0b00001111;
-
-const INVALID = 0b0000000;
-const COMMIT = 0b0010000;
-const TREE = 0b0100000;
-const BLOB = 0b0110000;
-const RESERVED = 0b1010000;
-const TAG = 0b1000000;
-const OFS_DELTA = 0b1100000;
-const REF_DELTA = 0b1110000;
-const types = {
-    0b0000000: 'invalid',
-    0b0010000: 'commit',
-    0b0100000: 'tree',
-    0b0110000: 'blob',
-    0b1010000: 'reserved',
-    0b1000000: 'tag',
-    0b1100000: 'ofs_delta',
-    0b1110000: 'ref_delta'
-} as const;
+// https://git-scm.com/docs/pack-format#_object_types
+const OBJ_INVALID = 0;
+const OBJ_COMMIT = 1;
+const OBJ_TREE = 2;
+const OBJ_BLOB = 3;
+const OBJ_RESERVED = 4;
+const OBJ_TAG = 5;
+const OBJ_OFS_DELTA = 6;
+const OBJ_REF_DELTA = 7;
+const types = [
+    'invalid',
+    'commit',
+    'tree',
+    'blob',
+    'reserved',
+    'tag',
+    'ofs_delta',
+    'ref_delta'
+] as const;
 
 const buffers = new Array(5000);
 let reuseBufferCount = 0;
@@ -140,18 +137,14 @@ export class PackContent {
 
         const reader = new BufferCursor(header);
 
-        // n-byte type and length (3-bit type, (n-1)*7+4-bit length) compressed data
-        const firstByte = reader.readUInt8();
-        const btype = (firstByte & HEADER_TYPE) as PackedType;
-
-        if (btype === INVALID || btype === RESERVED) {
-            throw new Error(`Unrecognized type: 0b${btype.toString(2)}`);
-        }
-
         // https://git-scm.com/docs/pack-format#_size_encoding
-        let length = firstByte & HEADER_LENGTH;
-        if (firstByte & HEADER_MULTIBYTE_LENGTH) {
-            length |= readVarIntLE(reader) << 4;
+        // n-byte type and length (3-bit type, (n-1)*7+4-bit length) compressed data
+        const int = readVarIntLE(reader);
+        const btype = ((int >> 4) & 0b0111) as PackedType;
+        const length = ((int >> 7) << 4) | (int & 0b1111);
+
+        if (btype === OBJ_INVALID || btype === OBJ_RESERVED) {
+            throw new Error(`Unrecognized type: 0b${btype.toString(2)}`);
         }
 
         let deltaRef: Buffer | number | null = null;
@@ -160,9 +153,9 @@ export class PackContent {
         // Both ofs-delta and ref-delta store the "delta" to be applied to another object (called base object)
         // to reconstruct the object. The difference between them is, ref-delta directly encodes base object name.
         // If the base object is in the same pack, ofs-delta encodes the offset of the base object in the pack instead.
-        if (btype === OFS_DELTA) {
+        if (btype === OBJ_OFS_DELTA) {
             deltaRef = offset - readEncodedOffset(reader);
-        } else if (btype === REF_DELTA) {
+        } else if (btype === OBJ_REF_DELTA) {
             deltaRef = Buffer.from(reader.slice(20));
         }
 
@@ -260,17 +253,12 @@ export class PackContent {
     }
 
     async objectsStat(): Promise<ObjectsTypeStat[]> {
-        const objectsByType = Object.fromEntries(
-            Object.entries(types).map(([btype, type]) => [
-                btype,
-                {
-                    type,
-                    count: 0,
-                    size: 0,
-                    packedSize: 0
-                }
-            ])
-        );
+        const objectsByType = types.map((type) => ({
+            type,
+            count: 0,
+            size: 0,
+            packedSize: 0
+        }));
 
         if (this.reverseIndex === null) {
             this.reverseIndex = PackContent.buildReverseIndex(this);
@@ -304,25 +292,17 @@ export class PackContent {
             }
 
             // n-byte type and length (3-bit type, (n-1)*7+4-bit length) compressed data
-            const firstByte = reader.readUInt8();
-            const btype = (firstByte & HEADER_TYPE) as PackedType;
-
-            if (btype === INVALID || btype === RESERVED) {
-                throw new Error(`Unrecognized type: 0b${btype.toString(2)}`);
-            }
-
             // https://git-scm.com/docs/pack-format#_size_encoding
-            let length = firstByte & HEADER_LENGTH;
-            if (firstByte & HEADER_MULTIBYTE_LENGTH) {
-                length |= readVarIntLE(reader) << 4;
-            }
+            const int = readVarIntLE(reader);
+            const btype = ((int >> 4) & 0b0111) as PackedType;
+            const length = ((int >> 7) << 4) | (int & 0b1111);
 
             objectsByType[btype].count++;
             objectsByType[btype].size += length;
             objectsByType[btype].packedSize += nextOffset - offset;
         }
 
-        return Object.values(objectsByType).filter((stat) => stat.count > 0);
+        return objectsByType.filter((stat) => stat.count > 0);
     }
 }
 
