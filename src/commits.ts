@@ -46,6 +46,7 @@ export function createCommitMethods(readObjectByOid: ReadObjectByOid, resolveRef
 
     return {
         commitOidFromRef,
+        readCommit: async (ref: string) => readCommit(await commitOidFromRef(ref)),
 
         async log({ ref = 'HEAD', depth = 50 }: { ref?: string; depth?: number } = {}) {
             const commitOid = await commitOidFromRef(ref);
