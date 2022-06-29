@@ -8,6 +8,7 @@ import { createCommitMethods } from './commits.js';
 export * from './types.js';
 export * from './parse-object.js';
 export async function createGitReader(gitdir: string) {
+    const startInitTime = Date.now();
     const [refIndex, looseObjectIndex, packedObjectIndex] = await Promise.all([
         createRefIndex(gitdir),
         createLooseObjectIndex(gitdir),
@@ -39,6 +40,8 @@ export async function createGitReader(gitdir: string) {
                     packed: packedObjects
                 }
             };
-        }
+        },
+
+        initTime: Date.now() - startInitTime
     };
 }
