@@ -1,5 +1,5 @@
 import assert from 'assert';
-import { readEncodedOffset, BufferCursor } from '../src/utils.js';
+import { readEncodedOffset, BufferCursor } from '../src/utils/buffer.js';
 
 it('readEncodedOffset', () => {
     const buffer = Buffer.from([142, 254, 254, 254, 254, 254, 254, 127]);

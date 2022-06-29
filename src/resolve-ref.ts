@@ -2,7 +2,7 @@ import { promises as fsPromises, existsSync } from 'fs';
 import { join as pathJoin } from 'path';
 import { scanFs } from '@discoveryjs/scan-fs';
 
-// @see https://git-scm.com/docs/git-rev-parse.html#_specifying_revisions
+// https://git-scm.com/docs/git-rev-parse.html#_specifying_revisions
 const refpaths = (ref: string) => [
     ref,
     pathJoin('refs', ref),
@@ -20,22 +20,18 @@ export async function createRefIndex(gitdir: string) {
     const packedRefs = await readPackedRefs(gitdir);
     // expand a ref into a full form
     const expandRef = async (ref: string) => {
-        // Is it a complete and valid SHA?
-        if (isOid(ref)) {
-            return ref;
-        }
-
         // Look in all the proper paths, in this order
-        const allpaths = refpaths(ref);
-
-        for (const ref of allpaths) {
-            if (packedRefs.has(ref)) {
-                return ref;
+        for (const candidateRef of refpaths(ref)) {
+            if (packedRefs.has(candidateRef)) {
+                return candidateRef;
             }
 
             try {
-                await fsPromises.stat(pathJoin(gitdir, ref));
-                return ref;
+                const stat = await fsPromises.stat(pathJoin(gitdir, candidateRef));
+
+                if (stat.isFile()) {
+                    return candidateRef;
+                }
             } catch {}
         }
 
@@ -54,7 +50,15 @@ export async function createRefIndex(gitdir: string) {
         }
 
         const expandedRef = await expandRef(ref);
-        ref = (await fsPromises.readFile(pathJoin(gitdir, expandedRef), 'utf8')).trimEnd();
+
+        ref =
+            packedRefs.get(expandedRef) ||
+            (await fsPromises.readFile(pathJoin(gitdir, expandedRef), 'utf8')).trimEnd();
+
+        // Is it a complete and valid SHA?
+        if (isOid(ref)) {
+            return ref;
+        }
 
         return resolveRef(ref);
     };
@@ -87,15 +91,15 @@ export async function createRefIndex(gitdir: string) {
     };
 
     return {
-        expandRef,
         resolveRef,
+        expandRef(ref: string) {
+            return isOid(ref) ? ref : expandRef(ref);
+        },
         async isRefExists(ref: string) {
-            try {
-                await expandRef(ref);
-                return true;
-            } catch (err) {
-                return false;
-            }
+            return expandRef(ref).then(
+                () => true,
+                () => false
+            );
         },
 
         listRemotes,
