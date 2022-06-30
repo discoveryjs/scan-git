@@ -9,12 +9,11 @@ import { checkFileHeader } from './utils/file.js';
 import { createObjectsTypeStat } from './utils/stat.js';
 
 export type ReadObjectHeaderFromAllPacks = (
-    hash: Buffer,
-    exclude?: PackContent | null
+    hash: Buffer
 ) => Promise<InternalGitObjectHeader | null> | null;
 export type ReadObjectFromAllPacks = (
     hash: Buffer,
-    exclude?: PackContent | null
+    cache?: boolean
 ) => Promise<InternalGitObjectContent | null> | null;
 
 type Type = 'commit' | 'tree' | 'blob' | 'tag';
@@ -101,7 +100,7 @@ export class PackContent {
             return this.readObjectHeaderFromFile(offset);
         }
 
-        return this.readObjectHeaderFromAllPacks(hash, this);
+        return this.readObjectHeaderFromAllPacks(hash);
     }
 
     readObjectHeaderByIndex(index: number) {
@@ -110,10 +109,10 @@ export class PackContent {
         return this.readObjectHeaderFromFile(offset);
     }
 
-    readObjectByIndex(index: number) {
+    readObjectByIndex(index: number, cache?: boolean) {
         const offset = this.index.getObjectOffsetByIndex(index);
 
-        return this.readObjectFromFile(offset);
+        return this.readObjectFromFile(offset, cache);
     }
 
     readObject(hash: Buffer) {
@@ -178,7 +177,7 @@ export class PackContent {
             const delta =
                 typeof deltaRef === 'number'
                     ? await this.readObjectHeaderFromFile(deltaRef)
-                    : await this.readObjectHeaderFromAllPacks(deltaRef, this);
+                    : await this.readObjectHeaderFromAllPacks(deltaRef);
 
             if (delta === null) {
                 throw new Error('Could not read delta object from packfile');
@@ -197,7 +196,7 @@ export class PackContent {
         return result;
     }
 
-    async readObjectFromFile(offset: number) {
+    async readObjectFromFile(offset: number, cache = true) {
         const cachedResult = this.cache.get(offset);
         if (cachedResult !== undefined) {
             return cachedResult;
@@ -248,7 +247,9 @@ export class PackContent {
             object
         };
 
-        this.cache.set(offset, result);
+        if (cache) {
+            this.cache.set(offset, result);
+        }
 
         return result;
     }

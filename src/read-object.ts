@@ -27,10 +27,10 @@ export function createReadObject(
         return result;
     }
 
-    async function readObjectByHash(hash: Buffer) {
+    async function readObjectByHash(hash: Buffer, cache = true) {
         let result: InternalGitObjectContent | null =
             (await looseObjectIndex.readObjectByHash(hash)) ||
-            (await packedObjectIndex.readObjectByHash(hash)) ||
+            (await packedObjectIndex.readObjectByHash(hash, cache)) ||
             null;
 
         if (result === null) {
@@ -61,10 +61,10 @@ export function createReadObject(
         return result;
     }
 
-    async function readObjectByOid(oid: string) {
+    async function readObjectByOid(oid: string, cache = true) {
         let result: InternalGitObjectContent | null =
             (await looseObjectIndex.readObjectByOid(oid)) ||
-            (await packedObjectIndex.readObjectByOid(oid)) ||
+            (await packedObjectIndex.readObjectByOid(oid, cache)) ||
             null;
 
         if (result === null) {

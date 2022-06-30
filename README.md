@@ -77,11 +77,11 @@ const commits = await repo.log({ ref: 'my-branch', depth: 10 });
 
 #### readObjectHeaderByHash(hash)
 
-#### readObjectByHash(hash)
+#### readObjectByHash(hash, cache?)
 
 #### readObjectHeaderByOid(oid)
 
-#### readObjectByOid(oid)
+#### readObjectByOid(oid, cache?)
 
 #### repo.stat()
 

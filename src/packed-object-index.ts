@@ -29,15 +29,13 @@ export async function createPackedObjectIndex(gitdir: string) {
 
     function readObjectByHash(
         hash: Buffer,
-        exclude: PackContent | null = null
+        cache?: boolean
     ): Promise<InternalGitObjectContent | null> | null {
         for (const packFile of packFiles) {
-            if (packFile !== exclude) {
-                const idnex = packFile.getObjectIndex(hash);
+            const idnex = packFile.getObjectIndex(hash);
 
-                if (idnex !== -1) {
-                    return packFile.readObjectByIndex(idnex);
-                }
+            if (idnex !== -1) {
+                return packFile.readObjectByIndex(idnex, cache);
             }
         }
 
@@ -61,8 +59,8 @@ export async function createPackedObjectIndex(gitdir: string) {
             return readObjectHeaderByHash(Buffer.from(oid, 'hex'));
         },
         readObjectByHash,
-        readObjectByOid(oid: string) {
-            return readObjectByHash(Buffer.from(oid, 'hex'));
+        readObjectByOid(oid: string, cache?: boolean) {
+            return readObjectByHash(Buffer.from(oid, 'hex'), cache);
         },
 
         async stat() {
