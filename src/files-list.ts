@@ -4,7 +4,7 @@ import { parseAnnotatedTag, parseCommit, parseTree } from './parse-object.js';
 type ReadTree = (hash: Buffer) => Promise<Tree>;
 type FileEntry = { path: string; hash: string };
 type FileListEntry = string | FileEntry;
-type FileDeltaEntry = { path: string; hash: string | null };
+type FileDeltaEntry = { path: string; hash: string };
 type FileDelta = {
     add: FileDeltaEntry[];
     modify: (FileDeltaEntry & { prevHash: string })[];
@@ -59,22 +59,7 @@ function addSubtreeToDelta(
     entry: TreeEntry,
     readTree: ReadTree
 ) {
-    const entries: FileEntry[] = [];
-
-    return collectTreeFiles(
-        entry.hash,
-        readTree,
-        `${pathPrefix}${entry.path}/`,
-        entries,
-        true
-    ).then(() => {
-        for (const entry of entries) {
-            target.push({
-                path: `${pathPrefix}${entry.path}`,
-                hash: entry.hash
-            });
-        }
-    });
+    return collectTreeFiles(entry.hash, readTree, `${pathPrefix}${entry.path}/`, target, true);
 }
 
 async function collectFilesDelta(
