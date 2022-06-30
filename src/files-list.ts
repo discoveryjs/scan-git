@@ -157,34 +157,9 @@ export function createFilesMethods(
 
         return treeOid;
     }
-    const treeCache = new Map<string, Tree>();
     async function readTree(hash: Buffer) {
-        const oid = hash.toString('hex');
-        const cachedTree = oid && treeCache.get(oid);
-
-        if (cachedTree) {
-            return cachedTree;
-        }
-
-        const { object: treeObject } = cachedTree || (await readObjectByHash(hash));
+        const { object: treeObject } = await readObjectByHash(hash);
         const tree = parseTree(treeObject);
-
-        for (let i = 0; i < tree.length - 1; i++) {
-            if (
-                tree[i].path + (tree[i].isTree ? '/' : '') >
-                tree[i + 1].path + (tree[i + 1].isTree ? '/' : '')
-            ) {
-                console.log(
-                    tree[i].path,
-                    tree[i + 1].path,
-                    tree.map((f) => f.path)
-                );
-            }
-        }
-
-        if (oid) {
-            treeCache.set(oid, tree);
-        }
 
         return tree;
     }
