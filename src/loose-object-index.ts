@@ -101,8 +101,8 @@ export async function createLooseObjectIndex(gitdir: string) {
             try {
                 fh = await fsPromises.open(filepath);
 
-                const headerBuffer = Buffer.alloc(128);
-                await fh.read(headerBuffer, 0, 128, 0);
+                const headerBuffer = Buffer.alloc(512);
+                await fh.read(headerBuffer, 0, 512, 0);
 
                 return parseLooseObjectHeader(inflateSync(headerBuffer));
             } finally {
