@@ -22,8 +22,8 @@ type PackedType =
     | typeof OBJ_COMMIT
     | typeof OBJ_TREE
     | typeof OBJ_BLOB
-    | typeof OBJ_RESERVED
     | typeof OBJ_TAG
+    | typeof OBJ_RESERVED
     | typeof OBJ_OFS_DELTA
     | typeof OBJ_REF_DELTA;
 
@@ -32,8 +32,8 @@ const OBJ_INVALID = 0;
 const OBJ_COMMIT = 1;
 const OBJ_TREE = 2;
 const OBJ_BLOB = 3;
-const OBJ_RESERVED = 4;
-const OBJ_TAG = 5;
+const OBJ_TAG = 4;
+const OBJ_RESERVED = 5;
 const OBJ_OFS_DELTA = 6;
 const OBJ_REF_DELTA = 7;
 const types = [
@@ -41,8 +41,8 @@ const types = [
     'commit',
     'tree',
     'blob',
-    'reserved',
     'tag',
+    'reserved',
     'ofs_delta',
     'ref_delta'
 ] as const;
