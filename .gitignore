@@ -1,6 +1,7 @@
 .vscode
-/coverage/
 /node_modules/
+/benchmarks/fixtures/
+/coverage/
 /tmp/
 /lib/
 /lib-test/

@@ -38,6 +38,7 @@
         ],
         "no-restricted-globals": "error",
         "no-prototype-builtins": "off",
+        "no-control-regex": 0,
         "no-duplicate-case": "error",
         "no-constant-condition": [2, { "checkLoops": false }],
         "no-empty": [

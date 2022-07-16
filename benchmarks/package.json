@@ -1,0 +1,13 @@
+{
+  "name": "scan-git-internal-benchmark",
+  "private": true,
+  "type": "module",
+  "scripts": {},
+  "dependencies": {
+    "@discoveryjs/scan-git": "file:..",
+    "chalk": "^4.0.0",
+    "es-main": "^1.0.2",
+    "isomorphic-git": "^1.18.3",
+    "simple-git": "^3.10.0"
+  }
+}
