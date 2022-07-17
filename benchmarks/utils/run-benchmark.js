@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fork } from 'node:child_process';
+import { scanFs } from '@discoveryjs/scan-fs';
 import chalk from 'chalk';
 import { collectGarbage, memDelta, traceMem } from './memory-usage.js';
 import { outputToReadme, updateReadmeTable } from './readme.js';
@@ -81,14 +82,18 @@ async function resolveFixture(fixtureIndex, fixtures) {
 
 export async function runBenchmark(benchmarkName, tests, fixture) {
     const results = [];
+    const fixtureSize = (await scanFs({ basedir: fixture.path })).reduce(
+        (res, file) => res + fs.statSync(fixture.path + '/' + file.path).size,
+        0
+    );
 
     // banner
     console.log('Benchmark:', chalk.green(benchmarkName));
     console.log('Node version:', chalk.green(process.versions.node));
     console.log(
         'Fixture:',
-        chalk.green(path.relative(process.cwd(), fixture.path))
-        // chalk.yellow(prettyByteSize(fs.statSync(fixture.path).size))
+        chalk.green(path.relative(process.cwd(), fixture.path)),
+        chalk.yellow(prettyByteSize(fixtureSize))
     );
     console.log();
 

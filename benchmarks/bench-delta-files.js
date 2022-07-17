@@ -5,7 +5,7 @@ import { fixtures } from './fixtures.js';
 export const benchmark = createBenchmark({
     name: 'commit-delta-files',
     fixtures,
-    libs: ['@discoveryjs/scan-git', 'simple-git'], //, 'isomorphic-git'],
+    libs: ['@discoveryjs/scan-git', 'simple-git', 'isomorphic-git'],
     async bootstrap(libName, fixture) {
         switch (libName) {
             case '@discoveryjs/scan-git': {
@@ -97,8 +97,9 @@ export const benchmark = createBenchmark({
         }
     },
     async bench(state, fixture) {
-        for (let i = 0; i < 100; i++) {
-            const res = await state.deltaFiles(fixture.commit, fixture.prevCommit);
+        for (let i = 0; i < 10; i++) {
+            await state.deltaFiles(fixture.commit, fixture.prevCommit);
+            // const res = await state.deltaFiles(fixture.commit, fixture.prevCommit);
             // console.log(res.length || res.add.length + res.remove.length + res.modify.length);
             // console.log(res?.slice(0, 10));
         }

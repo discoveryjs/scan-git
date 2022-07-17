@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {},
   "dependencies": {
+    "@discoveryjs/scan-fs": "^3.0.0",
     "@discoveryjs/scan-git": "file:..",
     "chalk": "^4.0.0",
     "es-main": "^1.0.2",
