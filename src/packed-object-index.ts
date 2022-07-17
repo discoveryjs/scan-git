@@ -32,10 +32,10 @@ export async function createPackedObjectIndex(gitdir: string) {
         cache?: boolean
     ): Promise<InternalGitObjectContent | null> | null {
         for (const packFile of packFiles) {
-            const idnex = packFile.getObjectIndex(hash);
+            const index = packFile.getObjectIndex(hash);
 
-            if (idnex !== -1) {
-                return packFile.readObjectByIndex(idnex, cache);
+            if (index !== -1) {
+                return packFile.readObjectByIndex(index, cache);
             }
         }
 
