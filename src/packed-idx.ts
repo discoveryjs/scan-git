@@ -13,8 +13,8 @@ export class PackIndex {
         public size: number,
         private fanoutTable: Array<[startIndex: number, endIndex: number]>,
         public names: Buffer,
-        public offsets: Buffer,
-        public largeOffsets: Buffer
+        public offsets: Uint32Array,
+        public largeOffsets: BigUint64Array
     ) {
         this.namesBytes = this.names.byteLength;
         this.offsetsBytes = this.offsets.byteLength;
@@ -42,12 +42,11 @@ export class PackIndex {
     }
 
     getObjectOffsetByIndex(index: number) {
-        const offset = this.offsets.readUInt32BE(index * 4); // index 4-bytes table
+        const offset = this.offsets[index]; // index 4-bytes table
 
         // When msbit is set to 1 then offset is an index for largeOffsets table
         if (offset & 0x80000000) {
-            const largeOffsetIdx = (offset & 0x7fffffff) * 8; // index 8-bytes table
-            const largeOffset = this.largeOffsets.readBigInt64BE(largeOffsetIdx);
+            const largeOffset = this.largeOffsets[offset & 0x7fffffff];
 
             // Convert bigint->number to avoid BigInt spread,
             // since any reasonable offset is for sure less then MAX_SAFE_INTEGER
@@ -117,14 +116,26 @@ export async function readPackIdxFile(packFilename: string) {
             await fh.read(largeOffsets, 0, largeOffsets.byteLength, readOffset);
         }
 
+        // swap numbers to avoid using readUInt32BE()/readBigInt64BE() and less math with indexes
+        offsets.swap32();
+        largeOffsets.swap64();
+
+        // create typed views (without memory copy)
+        const offsetsArray = new Uint32Array(offsets.buffer, offsets.byteOffset, size);
+        const largeOffsetsArray = new BigUint64Array(
+            largeOffsets.buffer,
+            largeOffsets.byteOffset,
+            largeOffsetsSize / 8
+        );
+
         return new PackIndex(
             idxFilename,
             idxFilesize,
             size,
             fanoutTable,
             names,
-            offsets,
-            largeOffsets
+            offsetsArray,
+            largeOffsetsArray
         );
     } finally {
         fh?.close();
