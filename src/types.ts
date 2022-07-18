@@ -86,3 +86,28 @@ export type ObjectsStatWithTypes = ObjectsStat & {
 export type ObjectsTypeStat = {
     type: PackedObjectType;
 } & ObjectsStat;
+
+type Added = 1;
+type Removed = 2;
+type Modified = 3;
+type TreeDiffAdded = {
+    type: Added;
+    isTree: boolean;
+    path: string;
+    hash: Buffer;
+};
+type TreeDiffRemoved = {
+    type: Removed;
+    isTree: boolean;
+    path: string;
+    hash: Buffer;
+};
+type TreeDiffModified = {
+    type: Modified;
+    isTree: boolean;
+    path: string;
+    hash: Buffer;
+    prevHash: Buffer;
+};
+export type TreeDiffEntry = TreeDiffAdded | TreeDiffRemoved | TreeDiffModified;
+export type TreeDiff = TreeDiffEntry[];

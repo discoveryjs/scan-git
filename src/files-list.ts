@@ -1,5 +1,13 @@
 import { ReadObjectByHash, ReadObjectByOid, ResolveRef, Tree, TreeEntry } from './types';
-import { parseAnnotatedTag, parseCommit, parseTree } from './parse-object.js';
+import {
+    ADDED,
+    REMOVED,
+    MODIFIED,
+    diffTrees,
+    parseAnnotatedTag,
+    parseCommit,
+    parseTree
+} from './parse-object.js';
 
 type ReadTree = (hash: Buffer) => Promise<Tree>;
 type FileEntry = { path: string; hash: string };
@@ -126,6 +134,66 @@ async function collectFilesDelta(
     }
 }
 
+async function collectFilesDelta2(
+    prevHash: Buffer,
+    nextHash: Buffer,
+    readObjectByHash: any,
+    readTree: ReadTree,
+    prefix: string,
+    delta: FileDelta
+) {
+    const [{ object: prevTree }, { object: nextTree }] = await Promise.all([
+        readObjectByHash(prevHash),
+        readObjectByHash(nextHash)
+    ]);
+    const diff = await diffTrees(prevTree, nextTree);
+
+    for (const entry of diff) {
+        switch (entry.type) {
+            case ADDED:
+                if (entry.isTree) {
+                    await addSubtreeToDelta(delta.add, prefix, entry, readTree);
+                } else {
+                    delta.add.push({
+                        path: `${prefix}${entry.path}`,
+                        hash: entry.hash.toString('hex')
+                    });
+                }
+                break;
+
+            case REMOVED:
+                if (entry.isTree) {
+                    await addSubtreeToDelta(delta.remove, prefix, entry, readTree);
+                } else {
+                    delta.remove.push({
+                        path: `${prefix}${entry.path}`,
+                        hash: entry.hash.toString('hex')
+                    });
+                }
+                break;
+
+            case MODIFIED:
+                if (entry.isTree) {
+                    await collectFilesDelta2(
+                        entry.prevHash,
+                        entry.hash,
+                        readObjectByHash,
+                        readTree,
+                        `${prefix}${entry.path}/`,
+                        delta
+                    );
+                } else {
+                    delta.modify.push({
+                        path: `${prefix}${entry.path}`,
+                        hash: entry.hash.toString('hex'),
+                        prevHash: entry.prevHash.toString('hex')
+                    });
+                }
+                break;
+        }
+    }
+}
+
 async function resolveRefToTree(oid: string, readObject: ReadObjectByOid): Promise<string> {
     const { type, object } = await readObject(oid);
 
@@ -207,7 +275,37 @@ export function createFilesMethods(
                     Buffer.from(treeOid2, 'hex'),
                     readTree,
                     '',
-                    delta as any // FIXME
+                    delta
+                );
+            }
+
+            return delta;
+        },
+
+        async deltaFiles2(nextRef = 'HEAD', prevRef: string) {
+            if (!prevRef) {
+                const prevOid = await resolveRef(nextRef);
+                const prevCommit = await readObjectByOid(prevOid);
+
+                prevRef = parseCommit(prevCommit.object).parent[0];
+            }
+
+            const prevTreeOid = await treeOidFromRef(prevRef);
+            const nextTreeOid = await treeOidFromRef(nextRef);
+            const delta: FileDelta = {
+                add: [],
+                modify: [],
+                remove: []
+            };
+
+            if (prevTreeOid !== nextTreeOid) {
+                await collectFilesDelta2(
+                    Buffer.from(prevTreeOid, 'hex'),
+                    Buffer.from(nextTreeOid, 'hex'),
+                    readObjectByHash,
+                    readTree,
+                    '',
+                    delta
                 );
             }
 
