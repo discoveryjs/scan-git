@@ -16,7 +16,7 @@ export function parseTimezoneOffset(offset: string) {
     return norm === 0 ? norm : -norm;
 }
 
-function parseContributor(input: string): Contributor {
+export function parseContributor(input: string): Contributor {
     const [, name, email, timestamp, timezone] = input.match(/^(.*) <(.*)> (\d*) (\S*)$/) || [];
 
     return {
