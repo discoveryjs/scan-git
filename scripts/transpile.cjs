@@ -14,7 +14,8 @@ const external = [
     'zlib',
     'assert',
     'module',
-    '@discoveryjs/scan-git'
+    '@discoveryjs/scan-git',
+    '@discoveryjs/scan-fs'
 ];
 
 function replaceContent(map) {
