@@ -107,7 +107,7 @@ export function runTestInChildProcess(testName, argv = process.argv.slice(1)) {
     return new Promise((resolve, reject) => {
         const child = fork(__dirname + '/run-test.js', [testName, ...argv], {
             stdio: ['inherit', 'pipe', 'pipe', 'ipc'],
-            execArgv: ['--expose-gc'],
+            execArgv: ['--expose-gc', '--enable-source-maps'],
             env: {
                 ...process.env,
                 FORCE_COLOR: chalk.supportsColor ? chalk.supportsColor.level : 0
@@ -191,9 +191,12 @@ async function runTest(name, fn, output = true) {
 }
 
 function sanitizeErrorOutput(error) {
-    const home = process.cwd();
-    const rx = new RegExp(home.replace(/\[\]\(\)\{\}\.\+\*\?/g, '\\$1'), 'g');
+    const basedir = process.cwd();
+    const rx = new RegExp(
+        '(?:file://)?' + basedir.replace(/\[\]\(\)\{\}\.\+\*\?/g, '\\$1') + '/',
+        'g'
+    );
     const text = String(error.stack || error);
 
-    return home ? text.replace(rx, '~') : text;
+    return basedir ? text.replace(rx, '') : text;
 }
