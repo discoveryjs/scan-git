@@ -146,9 +146,8 @@ async function collectFilesDelta2(
         readObjectByHash(prevHash),
         readObjectByHash(nextHash)
     ]);
-    const diff = await diffTrees(prevTree, nextTree);
 
-    for (const entry of diff) {
+    for (const entry of diffTrees(prevTree, nextTree)) {
         switch (entry.type) {
             case ADDED:
                 if (entry.isTree) {
