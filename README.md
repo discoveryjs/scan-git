@@ -20,17 +20,17 @@ createGitReader('path/to/.git').then(async (repo) => {
 
 ### Refs
 
-#### resolveRef(ref)
+#### repo.resolveRef(ref)
 
-#### expandRef(ref)
+#### repo.expandRef(ref)
 
-#### isRefExists(ref)
+#### repo.isRefExists(ref)
 
-#### listRemotes()
+#### repo.listRemotes()
 
-#### listBranches(remote?)
+#### repo.listBranches(remote?)
 
-#### listTags()
+#### repo.listTags()
 
 ### File lists
 
@@ -73,15 +73,15 @@ const commits = await repo.log({ ref: 'my-branch', depth: 10 });
 
 > Note: Pass `Infinity` as `depth` value to load all the commits that are reachable from `ref` at once.
 
-#### Statistics & info
+### Statistics & info
 
-#### readObjectHeaderByHash(hash)
+#### repo.readObjectHeaderByHash(hash)
 
-#### readObjectByHash(hash, cache?)
+#### repo.readObjectByHash(hash, cache?)
 
-#### readObjectHeaderByOid(oid)
+#### repo.readObjectHeaderByOid(oid)
 
-#### readObjectByOid(oid, cache?)
+#### repo.readObjectByOid(oid, cache?)
 
 #### repo.stat()
 
@@ -97,6 +97,20 @@ const stats = await repo.stat();
 //     }
 // }
 ```
+
+### Utils
+
+#### parseContributor()
+
+#### parseTimezone()
+
+#### parseAnnotatedTag()
+
+#### parseCommit()
+
+#### parseTree()
+
+#### diffTrees()
 
 ## Compare
 
