@@ -16,9 +16,9 @@ async function resolveRefToCommit(oid: string, readObject: ReadObjectByOid): Pro
     return oid;
 }
 
-function findMaxAgedCommit(commits: LogCommit[]) {
-    let result = commits[0];
-    let maxDate = result.committer.timestamp;
+function findMaxAgedCommit(commits: Set<LogCommit>) {
+    let result = null;
+    let maxDate = -Infinity;
 
     for (const commit of commits) {
         if (commit.committer.timestamp > maxDate) {
@@ -27,7 +27,8 @@ function findMaxAgedCommit(commits: LogCommit[]) {
         }
     }
 
-    return result;
+    // the candidates set will never be empty, so we exclude null as possible result
+    return result as LogCommit;
 }
 
 export function createCommitMethods(readObjectByOid: ReadObjectByOid, resolveRef: ResolveRef) {
@@ -55,7 +56,7 @@ export function createCommitMethods(readObjectByOid: ReadObjectByOid, resolveRef
             const seen = new Set<string>();
 
             while (commits.length < depth && candidates.size > 0) {
-                const next = findMaxAgedCommit([...candidates]);
+                const next = findMaxAgedCommit(candidates);
 
                 for (const oid of next.parent) {
                     if (!seen.has(oid)) {
