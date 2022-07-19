@@ -28,7 +28,7 @@
         "lib"
     ],
     "engines": {
-        "node": "^12.20.0 || ^14.13.0 || >=15.0.0"
+        "node": ">=16.0.0"
     },
     "dependencies": {
         "@discoveryjs/scan-fs": "^3.0.0"
