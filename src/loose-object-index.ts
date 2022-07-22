@@ -1,7 +1,13 @@
 import { relative as pathRelative } from 'path';
 import { promises as fsPromises } from 'fs';
 import { inflateSync } from './fast-inflate.js';
-import { GitObject, InternalGitObjectContent, InternalGitObjectHeader } from './types.js';
+import {
+    GitObject,
+    InternalGitObjectContent,
+    InternalGitObjectHeader,
+    ObjectsTypeStat,
+    PackedObjectType
+} from './types.js';
 import { binarySearchHash } from './utils/binary-search.js';
 import { createObjectsTypeStat, objectsStatFromTypes } from './utils/stat.js';
 
@@ -140,7 +146,7 @@ export async function createLooseObjectIndex(gitdir: string) {
 
         async stat() {
             const files = [];
-            const objectsByType = Object.create(null);
+            const objectsByType: Record<PackedObjectType, ObjectsTypeStat> = Object.create(null);
 
             for (const [oid, filename] of looseObjectMap) {
                 const [stat, objectHeader] = await Promise.all([
@@ -154,13 +160,13 @@ export async function createLooseObjectIndex(gitdir: string) {
                     }
 
                     objectsByType[objectHeader.type].count++;
-                    objectsByType[objectHeader.type].size += objectHeader.length;
-                    objectsByType[objectHeader.type].packedSize += stat.size;
+                    objectsByType[objectHeader.type].size += stat.size;
+                    objectsByType[objectHeader.type].unpackedSize += objectHeader.length;
                 }
 
                 files.push({
-                    filename: pathRelative(gitdir, filename),
-                    filesize: stat.size,
+                    path: pathRelative(gitdir, filename),
+                    size: stat.size,
                     object: {
                         oid,
                         ...objectHeader

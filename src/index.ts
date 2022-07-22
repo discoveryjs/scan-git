@@ -4,6 +4,7 @@ import { createLooseObjectIndex } from './loose-object-index.js';
 import { createPackedObjectIndex } from './packed-object-index.js';
 import { createFilesMethods } from './files-list.js';
 import { createCommitMethods } from './commits.js';
+import { createStatMethod } from './stat.js';
 
 export * from './types.js';
 export * from './parse-object.js';
@@ -25,22 +26,7 @@ export async function createGitReader(gitdir: string) {
         ...refIndex,
         ...createFilesMethods(readObjectByOid, readObjectByHash, refIndex.resolveRef),
         ...createCommitMethods(readObjectByOid, refIndex.resolveRef),
-
-        async stat() {
-            const [refs, looseObjects, packedObjects] = await Promise.all([
-                refIndex.stat(),
-                looseObjectIndex.stat(),
-                packedObjectIndex.stat()
-            ]);
-
-            return {
-                refs,
-                objects: {
-                    loose: looseObjects,
-                    packed: packedObjects
-                }
-            };
-        },
+        stat: createStatMethod({ gitdir, refIndex, looseObjectIndex, packedObjectIndex }),
 
         initTime: Date.now() - startInitTime
     };

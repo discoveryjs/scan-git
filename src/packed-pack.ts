@@ -295,8 +295,8 @@ export class PackContent {
             const length = ((int >> 7) << 4) | (int & 0b1111);
 
             objectsByType[btype].count++;
-            objectsByType[btype].size += length;
-            objectsByType[btype].packedSize += nextOffset - offset;
+            objectsByType[btype].size += nextOffset - offset;
+            objectsByType[btype].unpackedSize += length;
         }
 
         return objectsByType.filter((stat) => stat.count > 0);

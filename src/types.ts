@@ -78,7 +78,7 @@ export type Tree = TreeEntry[];
 export type ObjectsStat = {
     count: number;
     size: number;
-    packedSize: number;
+    unpackedSize: number;
 };
 export type ObjectsStatWithTypes = ObjectsStat & {
     types: ObjectsTypeStat[];

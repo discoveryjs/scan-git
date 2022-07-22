@@ -76,20 +76,20 @@ export async function createPackedObjectIndex(gitdir: string) {
                 }
 
                 files.push({
-                    filename: pathRelative(gitdir, pack.filename),
-                    filesize: pack.filesize,
+                    path: pathRelative(gitdir, pack.filename),
+                    size: pack.filesize,
                     objects: objectsStatFromTypes(packObjectsByType),
                     index: {
-                        filename: pathRelative(gitdir, pack.index.filename),
-                        filesize: pack.index.filesize,
+                        path: pathRelative(gitdir, pack.index.filename),
+                        size: pack.index.filesize,
                         namesBytes: pack.index.namesBytes,
                         offsetsBytes: pack.index.offsetsBytes,
                         largeOffsetsBytes: pack.index.largeOffsetsBytes
                     },
                     reverseIndex: pack.reverseIndex?.filename
                         ? {
-                              filename: pathRelative(gitdir, pack.reverseIndex.filename),
-                              filesize: pack.reverseIndex.filesize
+                              path: pathRelative(gitdir, pack.reverseIndex.filename),
+                              size: pack.reverseIndex.filesize
                           }
                         : null
                 });

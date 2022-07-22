@@ -4,7 +4,7 @@ export function createObjectsStat(): ObjectsStat {
     return {
         count: 0,
         size: 0,
-        packedSize: 0
+        unpackedSize: 0
     };
 }
 
@@ -13,7 +13,7 @@ export function createObjectsTypeStat(type: PackedObjectType): ObjectsTypeStat {
         type,
         count: 0,
         size: 0,
-        packedSize: 0
+        unpackedSize: 0
     };
 }
 
@@ -23,7 +23,7 @@ export function sumObjectsStat(stats: ObjectsStat[]) {
     for (const stat of stats) {
         result.count += stat.count;
         result.size += stat.size;
-        result.packedSize += stat.packedSize;
+        result.unpackedSize += stat.unpackedSize;
     }
 
     return result;
