@@ -1,14 +1,10 @@
 import assert from 'assert';
-import { createGitReader } from '@discoveryjs/scan-git';
+import { fixtures } from './helpers/fixture.js';
 
-const repoPath = './fixtures/base/_git';
-
-describe('resolve-ref', () => {
+describe('resolve-ref', async () => {
     let repo;
 
-    before(async () => {
-        repo = await createGitReader(repoPath);
-    });
+    before(async () => (repo = await fixtures.base.repo));
 
     describe('listBranches()', () => {
         it('list local branches', async () => {

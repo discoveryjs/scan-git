@@ -62,6 +62,10 @@ function parseAnnotatedTagHeaders(input: string, tag: AnnotatedTag) {
             break; // empty line is an end of headers
         }
 
+        if (lineEndOffset === -1) {
+            lineEndOffset = input.length;
+        }
+
         const spaceOffset = input.indexOf(' ', lineStartOffset);
         const key = input.slice(lineStartOffset, spaceOffset) as keyof AnnotatedTag | '';
         const value = input.slice(spaceOffset + 1, lineEndOffset) as AnnotatedTag['type'];
@@ -76,7 +80,7 @@ function parseAnnotatedTagHeaders(input: string, tag: AnnotatedTag) {
         }
 
         lineStartOffset = lineEndOffset + 1;
-    } while (true);
+    } while (lineStartOffset < input.length);
 
     return lineEndOffset + 1;
 }
@@ -111,6 +115,10 @@ function parseCommitHeaders(input: string, commit: Commit) {
             break; // empty line is an end of headers
         }
 
+        if (lineEndOffset === -1) {
+            lineEndOffset = input.length;
+        }
+
         const spaceOffset = input.indexOf(' ', lineStartOffset);
         const key = input.slice(lineStartOffset, spaceOffset) as keyof Commit | '';
         const value = input.slice(spaceOffset + 1, lineEndOffset);
@@ -127,7 +135,7 @@ function parseCommitHeaders(input: string, commit: Commit) {
         }
 
         lineStartOffset = lineEndOffset + 1;
-    } while (true);
+    } while (lineStartOffset < input.length);
 
     return lineEndOffset + 1;
 }
