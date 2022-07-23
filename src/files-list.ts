@@ -28,18 +28,22 @@ async function collectTreeFiles(
     filesWithHash = false
 ): Promise<any> {
     const tree = await readTree(hash);
-    const tasks = [];
+    const taskCount = 10;
+    const tasks: (Promise<any> | null)[] = Array.from({ length: taskCount }, () => null);
+    let taskNum = 0;
 
     for (const entry of tree) {
         if (entry.isTree) {
-            tasks.push(
-                collectTreeFiles(
-                    entry.hash,
-                    readTree,
-                    `${prefix}${entry.path}/`,
-                    filenames,
-                    filesWithHash
-                )
+            if (taskNum++ % taskCount === 0) {
+                await Promise.all(tasks);
+            }
+
+            tasks[taskNum] = collectTreeFiles(
+                entry.hash,
+                readTree,
+                `${prefix}${entry.path}/`,
+                filenames,
+                filesWithHash
             );
         } else {
             const path = `${prefix}${entry.path}`;
