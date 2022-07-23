@@ -10,13 +10,13 @@ export class PackReverseIndex {
         public filename: string | null,
         private packSize: number,
         private index: PackIndex,
-        private reverseIndex: Buffer
+        private reverseIndex: Uint32Array
     ) {
         this.filesize = this.filename !== null ? reverseIndex.byteLength + 12 + 20 : 0;
     }
 
     indexByOffsetToIndexByName(index: number) {
-        return this.reverseIndex.readUint32BE(index * 4);
+        return this.reverseIndex[index];
     }
     getObjectIndexByOffset(offset: number) {
         return binarySearchUint32(this.reverseIndex, offset);
@@ -55,9 +55,18 @@ export async function readPackRevFile(packFilename: string, packIndex: PackIndex
             // do nothing for now
 
             // Skip header and store as reverseIndex
-            const reverseIndex = buffer.slice(12);
+            const reverseIndex = new Uint32Array(buffer.slice(12).buffer);
 
-            return new PackReverseIndex(revFilename, packSize, packIndex, reverseIndex);
+            // swap numbers to avoid using readUInt32BE() and less math with indexes
+            buffer.swap32();
+
+            return new PackReverseIndex(
+                revFilename,
+                packSize,
+                packIndex,
+                // new Uint32Array(reverseIndex.buffer)
+                reverseIndex
+            );
         } finally {
             fh?.close();
             fh = null;

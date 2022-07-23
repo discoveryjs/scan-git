@@ -32,18 +32,13 @@ export function binarySearchHash(hashes: Buffer, hash: Buffer, l: number, h: num
 //   )
 // );
 
-export function binarySearchUint32(
-    buffer: Buffer,
-    value: number,
-    readValueByOffset = (index: number) => buffer.readUint32BE(index)
-) {
+export function binarySearchUint32(array: Uint32Array, value: number) {
     let l = 0;
-    let h = buffer.byteLength / 4 - 1;
+    let h = array.byteLength / 4 - 1;
 
     while (l <= h) {
         const m = l + ((h - l) >> 1);
-        const mo = m * 4;
-        const res = value - readValueByOffset(mo);
+        const res = value - array[m];
 
         if (res === 0) {
             return m;

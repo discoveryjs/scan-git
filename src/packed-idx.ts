@@ -46,11 +46,9 @@ export class PackIndex {
 
         // When msbit is set to 1 then offset is an index for largeOffsets table
         if (offset & 0x80000000) {
-            const largeOffset = this.largeOffsets[offset & 0x7fffffff];
-
             // Convert bigint->number to avoid BigInt spread,
             // since any reasonable offset is for sure less then MAX_SAFE_INTEGER
-            return Number(largeOffset);
+            return Number(this.largeOffsets[offset & 0x7fffffff]);
         }
 
         return offset;

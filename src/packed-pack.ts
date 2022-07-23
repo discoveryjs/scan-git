@@ -52,20 +52,15 @@ let reuseBufferCount = 0;
 
 export class PackContent {
     static buildReverseIndex(pack: PackContent) {
-        const uint32View = new Uint32Array(pack.size);
-        const reverseIndex = Buffer.from(uint32View.buffer);
+        const reverseIndex = new Uint32Array(pack.size);
 
         for (let i = 0; i < pack.size; i++) {
-            uint32View[i] = i;
+            reverseIndex[i] = i;
         }
 
-        uint32View.sort(
+        reverseIndex.sort(
             (a, b) => pack.index.getObjectOffsetByIndex(a) - pack.index.getObjectOffsetByIndex(b)
         );
-
-        for (let i = 0; i < pack.size; i++) {
-            reverseIndex.writeUInt32BE(uint32View[i], i * 4);
-        }
 
         return new PackReverseIndex(null, pack.filesize, pack.index, reverseIndex);
     }
