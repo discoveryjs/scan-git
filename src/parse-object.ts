@@ -1,11 +1,11 @@
 import { Contributor, AnnotatedTag, Commit, Tree, TreeDiff } from './types';
 
-const NULL_CONTRIBUTOR: Contributor = {
+const NULL_CONTRIBUTOR: Contributor = Object.freeze({
     name: 'Unknown',
     email: 'unknown@unknown.com',
     timestamp: 0,
     timezone: '+0000'
-};
+});
 
 // The amount of effort that went into crafting these cases to handle
 // -0 (just so we don't lose that information when parsing and reconstructing)

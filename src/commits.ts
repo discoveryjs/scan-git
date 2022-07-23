@@ -58,15 +58,15 @@ export function createCommitMethods(readObjectByOid: ReadObjectByOid, resolveRef
             while (commits.length < depth && candidates.size > 0) {
                 const next = findMaxAgedCommit(candidates);
 
+                commits.push(next);
+                candidates.delete(next);
+
                 for (const oid of next.parent) {
                     if (!seen.has(oid)) {
                         candidates.add(await readCommit(oid));
                         seen.add(oid);
                     }
                 }
-
-                commits.push(next);
-                candidates.delete(next);
             }
 
             return commits;

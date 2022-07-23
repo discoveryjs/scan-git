@@ -52,7 +52,7 @@ export async function createRefIndex(gitdir: string) {
             const expandedRef = await expandRef(ref);
 
             if (expandedRef === null) {
-                throw new Error('');
+                throw new Error("Can't resolve ref");
             }
 
             ref =
@@ -90,7 +90,6 @@ export async function createRefIndex(gitdir: string) {
             await scanFs({
                 basedir: pathJoin(gitdir, prefix),
                 rules: {
-                    test: /./,
                     async extract(file, content) {
                         const oid = await resolveRef(content.trimEnd());
 
