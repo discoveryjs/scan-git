@@ -20676,7 +20676,6 @@
         ]
     },
     "stat": {
-        "gitdir": "/Users/romandvornov/Developer/scan-git/fixtures/base/_git",
         "size": 162549,
         "refs": {
             "remotes": [

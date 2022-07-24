@@ -43,7 +43,6 @@ export function createStatMethod({
         }
 
         return {
-            gitdir,
             size: fileStats.reduce((sum, file) => sum + file.size, 0),
             refs,
             objects: {
