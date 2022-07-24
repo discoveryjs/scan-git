@@ -1,9 +1,8 @@
 import assert from 'assert';
 import { fixtures } from './helpers/fixture.js';
 
-describe('resolve-ref', async () => {
+describe('resolve-ref', () => {
     let repo;
-
     before(async () => (repo = await fixtures.base.repo));
 
     describe('listBranches()', () => {

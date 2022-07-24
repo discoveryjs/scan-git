@@ -4,6 +4,7 @@ import { createGitReader, parseTree } from '../../lib/index.js';
 
 const repo = await createGitReader(fileURLToPath(new URL('_git', import.meta.url)));
 const commits = await repo.log();
+const stat = await repo.stat();
 const objects = {};
 const filesLists = {};
 const filesDelta = {};
@@ -25,7 +26,8 @@ fs.writeFileSync(
             commits,
             filesLists,
             filesDelta,
-            objects
+            objects,
+            stat
         },
         null,
         4

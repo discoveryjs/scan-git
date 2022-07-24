@@ -1,7 +1,7 @@
 import assert from 'assert';
 import { fixtures } from './helpers/fixture.js';
 
-describe('list files', async () => {
+describe('list files', () => {
     let repo;
     before(async () => (repo = await fixtures.base.repo));
 
