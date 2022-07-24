@@ -59,13 +59,6 @@ async function collectTreeFiles(
     return Promise.all(tasks);
 }
 
-function addEntryToDelta(target: FileDeltaEntry[], pathPrefix: string, entry: TreeEntry) {
-    target.push({
-        path: `${pathPrefix}${entry.path}`,
-        hash: entry.hash.toString('hex')
-    });
-}
-
 function addSubtreeToDelta(
     target: FileDeltaEntry[],
     pathPrefix: string,
