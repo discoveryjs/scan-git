@@ -2,7 +2,7 @@
 
 [![NPM version](https://img.shields.io/npm/v/@discoveryjs/scan-git.svg)](https://www.npmjs.com/package/@discoveryjs/scan-git)
 [![Build](https://github.com/discoveryjs/scan-git/actions/workflows/build.yml/badge.svg)](https://github.com/discoveryjs/scan-git/actions/workflows/build.yml)
-[![Coverage Status](https://coveralls.io/repos/github/discoveryjs/scan-git/badge.svg?branch=master)](https://coveralls.io/github/discoveryjs/scan-git?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/discoveryjs/scan-git/badge.svg?branch=main)](https://coveralls.io/github/discoveryjs/scan-git?branch=main)
 
 ## Usage
 
