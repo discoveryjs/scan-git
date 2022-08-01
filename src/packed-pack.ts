@@ -84,6 +84,7 @@ export class PackContent {
     getObjectOffset(hash: Buffer) {
         return this.index.getObjectOffsetByHash(hash);
     }
+
     getObjectIndex(hash: Buffer) {
         return this.index.getObjectIndexByHash(hash);
     }
@@ -256,16 +257,21 @@ export class PackContent {
             this.reverseIndex = PackContent.buildReverseIndex(this);
         }
 
+        // we read file in chunks to not run into memory issues on big files, current chunk is stored in this buffer
         const readBuffer = Buffer.allocUnsafe(4 * 1024 * 1024);
         const reader = new BufferCursor(readBuffer);
+
+        // offset of the first object in pack file
         let nextOffset = this.index.getObjectOffsetByIndex(
             this.reverseIndex.indexByOffsetToIndexByName(0)
         );
 
         reader.offset = readBuffer.byteLength;
 
+        // offsetBase - offset within the pack file
         for (let i = 0, offsetBase = 0; i < this.index.size; i++) {
             const offset = nextOffset;
+            // an offset within a chunk of pack file that currently loaded in readBuffer
             const relOffset = offset - offsetBase;
 
             nextOffset =
@@ -273,8 +279,10 @@ export class PackContent {
                     ? this.index.getObjectOffsetByIndex(
                           this.reverseIndex.indexByOffsetToIndexByName(i)
                       )
-                    : this.filesize - 20;
+                    : this.filesize - 20; // checks if there's more to read (20 is size of the file ender)
 
+            // 32 bytes is a guesstimate on data size that for sure contains object's type & length header
+            // if there's less data in the buffer, we read more from the file
             if (relOffset > reader.bytesLeft - 32) {
                 await this.read(readBuffer, offset);
                 reader.offset = 0;
@@ -292,6 +300,32 @@ export class PackContent {
             objectsByType[btype].count++;
             objectsByType[btype].size += nextOffset - offset;
             objectsByType[btype].unpackedSize += length;
+
+            if (btype !== OBJ_OFS_DELTA) {
+                continue;
+            }
+
+            // read offset part to skip over to the size part
+            readEncodedOffset(reader);
+
+            const chunkSize = 512;
+            let objectBuffer: Buffer;
+            if (reader.bytesLeft >= chunkSize) {
+                objectBuffer = reader.slice(chunkSize);
+            } else {
+                objectBuffer = Buffer.allocUnsafe(chunkSize);
+                await this.read(objectBuffer, offsetBase + reader.offset);
+            }
+
+            const inflatedObjectBuffer = inflateSync(objectBuffer);
+            const objectReader = new BufferCursor(inflatedObjectBuffer);
+
+            // The delta data starts with the size of the base object and the size of the object to be reconstructed.
+            // Read object's base size to move cursor to object's recosntructed size
+            readVarIntLE(objectReader);
+            const resultSize = readVarIntLE(objectReader);
+
+            objectsByType[btype].unpackedRestoredSize += resultSize;
         }
 
         return objectsByType.filter((stat) => stat.count > 0);

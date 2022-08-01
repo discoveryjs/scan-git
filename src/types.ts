@@ -79,6 +79,7 @@ export type ObjectsStat = {
     count: number;
     size: number;
     unpackedSize: number;
+    unpackedRestoredSize: number;
 };
 export type ObjectsStatWithTypes = ObjectsStat & {
     types: ObjectsTypeStat[];

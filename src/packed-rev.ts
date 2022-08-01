@@ -3,6 +3,13 @@ import { PackIndex } from './packed-idx.js';
 import { binarySearchUint32 } from './utils/binary-search.js';
 import { checkFileHeader } from './utils/file.js';
 
+/**
+ * Indexes in reverse index sorted by the offset of corresponding objects in pack file
+ * Allows:
+ * - find an object name (oid) based on current offset
+ * - traverse objects in the order they occur in the pack file (in the index file they're sorted by name)
+ * - knowing offsets for current object and the next object allows to calculate its packed size (useful if you need to read a whole object)
+ */
 export class PackReverseIndex {
     filesize: number;
 
