@@ -130,6 +130,7 @@ const stats = await repo.stat();
 |    🚫    |       🚫       | [multi-pack-index] (MIDX) <br><sub>Stores a list of objects and their offsets into multiple packfiles, can provide O(log N) lookup time for any number of packfiles</sub>                                                 |
 |    🚫    |       🚫       | [multi-pack-index reverse indexes] (RIDX) <br><sub>Similar to the pack-based reverse index</sub>                                                                                                                          |
 |    🚫    |       🚫       | [Cruft packs] <br><sub>A cruft pack eliminates the need for storing unreachable objects in a loose state by including the per-object mtimes in a separate file alongside a single pack containing all loose objects</sub> |
+|    🚫    |       🚫       | [Pack and multi-pack bitmaps] <br><sub>Bitmaps store reachability information about the set of objects in a packfile, or a multi-pack index</sub>                                                                         |
 | 🚫 (TBD) |       🚫       | [commit-graph] <br><sub>A binary file format that creates a structured representation of Git’s commit history, boost some operations</sub>                                                                                |
 
 [index file]: https://git-scm.com/docs/index-format
@@ -138,6 +139,7 @@ const stats = await repo.stat();
 [multi-pack-index]: https://git-scm.com/docs/multi-pack-index
 [multi-pack-index reverse indexes]: https://git-scm.com/docs/pack-format#_multi_pack_index_reverse_indexes
 [cruft packs]: https://git-scm.com/docs/cruft-packs
+[pack and multi-pack bitmaps]: https://github.blog/2021-11-15-highlights-from-git-2-34/#multi-pack-reachability-bitmaps
 [commit-graph]: https://devblogs.microsoft.com/devops/updates-to-the-git-commit-graph-feature/
 
 ## License
