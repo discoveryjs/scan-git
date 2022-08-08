@@ -42,17 +42,23 @@ export async function createRefIndex(gitdir: string) {
     };
     const resolveRef = async (ref: string) => {
         // Is it a complete and valid SHA?
+
         while (!isOid(ref)) {
             // Is it a ref pointer?
             if (ref.startsWith('ref: ')) {
                 ref = ref.slice(5); // 'ref: '.length == 5
                 continue;
             }
+            // For files where appears additional information, such as tags, branch names and comments
+            if (/\s/.test(ref)) {
+                ref = ref.split(/\s+/)[0];
+                continue;
+            }
 
             const expandedRef = await expandRef(ref);
 
             if (expandedRef === null) {
-                throw new Error("Can't resolve ref");
+                throw new Error(`Reference "${ref}" not found`);
             }
 
             ref =
@@ -139,10 +145,7 @@ export async function createRefIndex(gitdir: string) {
             return isOid(ref) ? ref : expandRef(ref);
         },
         async isRefExists(ref: string) {
-            return expandRef(ref).then(
-                () => true,
-                () => false
-            );
+            return (await expandRef(ref)) !== null;
         },
 
         listRemotes,
