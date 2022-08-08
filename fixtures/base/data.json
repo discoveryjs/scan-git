@@ -20710,36 +20710,42 @@
             "count": 322,
             "size": 145569,
             "unpackedSize": 446973,
+            "unpackedRestoredSize": 755430,
             "types": [
                 {
                     "type": "tree",
                     "count": 23,
                     "size": 7537,
-                    "unpackedSize": 8929
+                    "unpackedSize": 8929,
+                    "unpackedRestoredSize": 0
                 },
                 {
                     "type": "blob",
                     "count": 59,
                     "size": 105012,
-                    "unpackedSize": 387877
+                    "unpackedSize": 387877,
+                    "unpackedRestoredSize": 0
                 },
                 {
                     "type": "commit",
                     "count": 55,
                     "size": 10163,
-                    "unpackedSize": 14952
+                    "unpackedSize": 14952,
+                    "unpackedRestoredSize": 0
                 },
                 {
                     "type": "tag",
                     "count": 1,
                     "size": 151,
-                    "unpackedSize": 171
+                    "unpackedSize": 171,
+                    "unpackedRestoredSize": 0
                 },
                 {
                     "type": "ofs_delta",
                     "count": 184,
                     "size": 22706,
-                    "unpackedSize": 35044
+                    "unpackedSize": 35044,
+                    "unpackedRestoredSize": 755430
                 }
             ],
             "loose": {
@@ -20747,30 +20753,35 @@
                     "count": 19,
                     "size": 15407,
                     "unpackedSize": 40312,
+                    "unpackedRestoredSize": 0,
                     "types": [
                         {
                             "type": "tree",
                             "count": 5,
                             "size": 2377,
-                            "unpackedSize": 2789
+                            "unpackedSize": 2789,
+                            "unpackedRestoredSize": 0
                         },
                         {
                             "type": "blob",
                             "count": 6,
                             "size": 11522,
-                            "unpackedSize": 35417
+                            "unpackedSize": 35417,
+                            "unpackedRestoredSize": 0
                         },
                         {
                             "type": "commit",
                             "count": 7,
                             "size": 1357,
-                            "unpackedSize": 1935
+                            "unpackedSize": 1935,
+                            "unpackedRestoredSize": 0
                         },
                         {
                             "type": "tag",
                             "count": 1,
                             "size": 151,
-                            "unpackedSize": 171
+                            "unpackedSize": 171,
+                            "unpackedRestoredSize": 0
                         }
                     ]
                 },
@@ -20953,30 +20964,35 @@
                     "count": 303,
                     "size": 130162,
                     "unpackedSize": 406661,
+                    "unpackedRestoredSize": 755430,
                     "types": [
                         {
                             "type": "commit",
                             "count": 48,
                             "size": 8806,
-                            "unpackedSize": 13017
+                            "unpackedSize": 13017,
+                            "unpackedRestoredSize": 0
                         },
                         {
                             "type": "tree",
                             "count": 18,
                             "size": 5160,
-                            "unpackedSize": 6140
+                            "unpackedSize": 6140,
+                            "unpackedRestoredSize": 0
                         },
                         {
                             "type": "blob",
                             "count": 53,
                             "size": 93490,
-                            "unpackedSize": 352460
+                            "unpackedSize": 352460,
+                            "unpackedRestoredSize": 0
                         },
                         {
                             "type": "ofs_delta",
                             "count": 184,
                             "size": 22706,
-                            "unpackedSize": 35044
+                            "unpackedSize": 35044,
+                            "unpackedRestoredSize": 755430
                         }
                     ]
                 },
@@ -20988,30 +21004,35 @@
                             "count": 303,
                             "size": 130162,
                             "unpackedSize": 406661,
+                            "unpackedRestoredSize": 755430,
                             "types": [
                                 {
                                     "type": "commit",
                                     "count": 48,
                                     "size": 8806,
-                                    "unpackedSize": 13017
+                                    "unpackedSize": 13017,
+                                    "unpackedRestoredSize": 0
                                 },
                                 {
                                     "type": "tree",
                                     "count": 18,
                                     "size": 5160,
-                                    "unpackedSize": 6140
+                                    "unpackedSize": 6140,
+                                    "unpackedRestoredSize": 0
                                 },
                                 {
                                     "type": "blob",
                                     "count": 53,
                                     "size": 93490,
-                                    "unpackedSize": 352460
+                                    "unpackedSize": 352460,
+                                    "unpackedRestoredSize": 0
                                 },
                                 {
                                     "type": "ofs_delta",
                                     "count": 184,
                                     "size": 22706,
-                                    "unpackedSize": 35044
+                                    "unpackedSize": 35044,
+                                    "unpackedRestoredSize": 755430
                                 }
                             ]
                         },
