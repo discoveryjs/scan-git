@@ -20676,7 +20676,7 @@
         ]
     },
     "stat": {
-        "size": 163675,
+        "size": 163569,
         "refs": {
             "remotes": [
                 {
@@ -21060,7 +21060,7 @@
             },
             {
                 "path": "FETCH_HEAD",
-                "size": 155
+                "size": 115
             },
             {
                 "path": "FOO_HEAD",
@@ -21076,7 +21076,7 @@
             },
             {
                 "path": "ORIG_HEAD",
-                "size": 110
+                "size": 41
             },
             {
                 "path": "config",
@@ -21240,15 +21240,15 @@
             },
             {
                 "path": "refs/remotes/origin/should-be-head",
-                "size": 40
+                "size": 41
             },
             {
                 "path": "refs/remotes/origin/should-be-remote-head",
-                "size": 40
+                "size": 41
             },
             {
                 "path": "refs/remotes/origin/should-be-tag",
-                "size": 40
+                "size": 41
             },
             {
                 "path": "refs/remotes/origin/with-slash/should-be-head",
