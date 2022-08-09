@@ -1,15 +1,24 @@
-import { join as pathJoin, relative as pathRelative } from 'path';
+import { join as pathJoin, relative as pathRelative, basename } from 'path';
 import { promises as fsPromises } from 'fs';
 import { PackContent, readPackFile } from './packed-pack.js';
 import {
     InternalGitObjectContent,
     InternalGitObjectHeader,
     PackedObjectType,
-    ObjectsTypeStat
+    ObjectsTypeStat,
+    NormalizedGitReaderOptions
 } from './types.js';
 import { objectsStatFromTypes, sumObjectsStat } from './utils/stat.js';
 
-export async function createPackedObjectIndex(gitdir: string) {
+/**
+ * Creates an index object that provides information about git objects stored within pack files
+ * @param gitdir
+ * @param options
+ */
+export async function createPackedObjectIndex(
+    gitdir: string,
+    { cruftPacks }: NormalizedGitReaderOptions
+) {
     function readObjectHeaderByHash(
         hash: Buffer,
         exclude: PackContent | null = null
@@ -43,8 +52,27 @@ export async function createPackedObjectIndex(gitdir: string) {
     }
 
     const packdir = pathJoin(gitdir, 'objects/pack');
-    const packFilenames = (await fsPromises.readdir(packdir))
-        .filter((filename) => filename.endsWith('.pack'))
+    const packdirFiles = await fsPromises.readdir(packdir);
+    const cruftPackFileNames =
+        cruftPacks !== 'include'
+            ? packdirFiles.filter((f) => f.endsWith('.mtimes')).map((f) => basename(f, '.mtimes'))
+            : [];
+
+    const packFilenames = packdirFiles
+        .filter((filename) => {
+            if (!filename.endsWith('.pack')) {
+                return false;
+            }
+
+            if (cruftPacks === 'include') {
+                return true;
+            }
+
+            const fnWithoutExt = basename(filename, '.pack');
+            return cruftPacks === 'only'
+                ? cruftPackFileNames.includes(fnWithoutExt)
+                : !cruftPackFileNames.includes(fnWithoutExt);
+        })
         .map((filename) => `${packdir}/${filename}`);
 
     const packFiles = await Promise.all(

@@ -3,7 +3,7 @@ import { fixtures } from './helpers/fixture.js';
 
 describe('resolve-ref', () => {
     let repo;
-    before(async () => (repo = await fixtures.base.repo));
+    before(async () => (repo = await fixtures.base.repo()));
 
     describe('listBranches()', () => {
         it('list local branches', async () => {

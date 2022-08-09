@@ -112,3 +112,28 @@ type TreeDiffModified = {
 };
 export type TreeDiffEntry = TreeDiffAdded | TreeDiffRemoved | TreeDiffModified;
 export type TreeDiff = TreeDiffEntry[];
+
+export type CruftPackMode =
+    /** Processes all packs */
+    | 'include'
+    /** Excludes cruft packs from processing */
+    | 'exclude'
+    /** Processes cruft packs only */
+    | 'only';
+
+export interface GitReaderOptions {
+    /**
+     * Controls the inclusion of cruft packs in packed objects procession.
+     * @see {@link https://git-scm.com/docs/cruft-packs} for more info about cruft packs.
+     *
+     * true - alias for 'include'
+     * false - alias for 'exclude'
+     *
+     * @default 'include'
+     */
+    cruftPacks?: CruftPackMode | boolean;
+}
+
+export interface NormalizedGitReaderOptions {
+    cruftPacks: CruftPackMode;
+}
