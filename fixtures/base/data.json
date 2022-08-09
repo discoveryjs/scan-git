@@ -20676,7 +20676,7 @@
         ]
     },
     "stat": {
-        "size": 163688,
+        "size": 163765,
         "refs": {
             "remotes": [
                 {
@@ -21205,7 +21205,7 @@
             },
             {
                 "path": "packed-refs",
-                "size": 231
+                "size": 308
             },
             {
                 "path": "refs/heads/main",
