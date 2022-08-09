@@ -20676,7 +20676,7 @@
         ]
     },
     "stat": {
-        "size": 163569,
+        "size": 163688,
         "refs": {
             "remotes": [
                 {
@@ -20724,6 +20724,7 @@
                 "onmain-tag",
                 "should-be-tag",
                 "test-annotated-tag",
+                "test-annotated-tag/packed",
                 "test-tag",
                 "with-slash/should-be-tag"
             ]
@@ -21204,7 +21205,7 @@
             },
             {
                 "path": "packed-refs",
-                "size": 112
+                "size": 231
             },
             {
                 "path": "refs/heads/main",

@@ -99,6 +99,7 @@ describe('resolve-ref', () => {
                 'onmain-tag',
                 'should-be-tag',
                 'test-annotated-tag',
+                'test-annotated-tag/packed',
                 'test-tag',
                 'with-slash/should-be-tag'
             ];
@@ -112,6 +113,10 @@ describe('resolve-ref', () => {
                 { name: 'onmain-tag', oid: '7c2a62cdbc2ef28afaaed3b6f3aef9b581e5aa8e' },
                 { name: 'should-be-tag', oid: '7b84f676f2fbea2a3c6d83924fa63059c7bdfbe2' },
                 { name: 'test-annotated-tag', oid: '56ea7a808e35df13e76fee92725a65a373a9835c' },
+                {
+                    name: 'test-annotated-tag/packed',
+                    oid: '56ea7a808e35df13e76fee92725a65a373a9835c'
+                },
                 { name: 'test-tag', oid: '2dbee47a8d4f8d39e1168fad951b703ee05614d6' },
                 {
                     name: 'with-slash/should-be-tag',
@@ -136,9 +141,8 @@ describe('resolve-ref', () => {
         it('oid into oid', async () => {
             const oid = '7b84f676f2fbea2a3c6d83924fa63059c7bdfbe2';
             const actual = await repo.resolveRef(oid);
-            const expected = oid;
 
-            assert.strictEqual(actual, expected);
+            assert.strictEqual(actual, oid);
         });
 
         describe('ref into oid', () => {
@@ -220,6 +224,13 @@ describe('resolve-ref', () => {
     });
 
     describe('expandRef()', () => {
+        it('oid into oid', async () => {
+            const oid = '7b84f676f2fbea2a3c6d83924fa63059c7bdfbe2';
+            const actual = await repo.expandRef(oid);
+
+            assert.strictEqual(actual, oid);
+        });
+
         describe('all ref types', () => {
             for (const testCase of refFixtures) {
                 it(testCase.ref, async () => {

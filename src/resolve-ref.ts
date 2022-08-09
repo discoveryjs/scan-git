@@ -49,7 +49,7 @@ export async function createRefIndex(gitdir: string) {
                 ref = ref.slice(5); // 'ref: '.length == 5
                 continue;
             }
-            // For files where appears additional information, such as tags, branch names and comments
+            // For files where appears additional information, such as tags, branch names and commentsj
             if (/\s/.test(ref)) {
                 ref = ref.split(/\s+/)[0];
                 continue;
