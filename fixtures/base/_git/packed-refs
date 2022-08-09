@@ -1,5 +1,5 @@
 # pack-refs with: peeled fully-peeled sorted 
 7b84f676f2fbea2a3c6d83924fa63059c7bdfbe2 refs/remotes/origin/main
 56ea7a808e35df13e76fee92725a65a373a9835c refs/tags/test-annotated-tag/packed
-56ea7a808e35df13e76fee92725a65a373a9835c refs/tags/test-annotated-tag/packed
+56ea7a808e35df13e76fee92725a65a373a9835c refs/tags/test-annotated-tag/packed^{}
 ^2dbee47a8d4f8d39e1168fad951b703ee05614d6
