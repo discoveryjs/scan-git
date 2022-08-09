@@ -171,15 +171,7 @@ export async function createRefIndex(gitdir: string) {
 
 // https://stackoverflow.com/a/40355107/2168416
 function compareRefNames(a: Ref, b: Ref) {
-    const _a = a.name.replace(/\^\{\}$/, '');
-    const _b = b.name.replace(/\^\{\}$/, '');
-    const cmp = -(_a < _b) || Number(_a > _b);
-
-    if (cmp === 0) {
-        return a.name.endsWith('^{}') ? 1 : -1;
-    }
-
-    return cmp;
+    return a.name < b.name ? -1 : 1;
 }
 
 async function readPackedRefs(gitdir: string) {
