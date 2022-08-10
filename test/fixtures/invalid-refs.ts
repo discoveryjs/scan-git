@@ -1,4 +1,4 @@
-export const wrongRefFixtures = [
+export const invalidRefs = [
     {
         ref: 'COMMIT_EDITMSG',
         oid: 'beda62cdbc2ef28afaaed3b6f3aef9b581e5aa8e'
@@ -41,6 +41,10 @@ export const wrongRefFixtures = [
     },
     {
         ref: 'should-be-remote-head',
+        oid: '7b84f676f2fbea2a3c6d83924fa63059c7bdfbe2'
+    },
+    {
+        ref: 'refs/heads/mainnn',
         oid: '7b84f676f2fbea2a3c6d83924fa63059c7bdfbe2'
     }
 ];

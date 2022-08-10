@@ -20676,7 +20676,7 @@
         ]
     },
     "stat": {
-        "size": 163688,
+        "size": 163689,
         "refs": {
             "remotes": [
                 {
@@ -20699,7 +20699,7 @@
                         "should-be-head",
                         "should-be-remote-head",
                         "should-be-tag",
-                        "with-slash/should-be-head",
+                        "with-slash/should-be-remote-head",
                         "with-slash/should-be-tag"
                     ]
                 },
@@ -21217,7 +21217,7 @@
             },
             {
                 "path": "refs/heads/should-be-head",
-                "size": 40
+                "size": 41
             },
             {
                 "path": "refs/heads/should-be-tag",
@@ -21252,7 +21252,7 @@
                 "size": 41
             },
             {
-                "path": "refs/remotes/origin/with-slash/should-be-head",
+                "path": "refs/remotes/origin/with-slash/should-be-remote-head",
                 "size": 40
             },
             {

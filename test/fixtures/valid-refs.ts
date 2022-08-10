@@ -1,4 +1,4 @@
-export const refFixtures = [
+export const validRefs = [
     // 'refs/heads/main'
     {
         ref: 'refs/heads/main',
@@ -15,6 +15,7 @@ export const refFixtures = [
         oid: '7b84f676f2fbea2a3c6d83924fa63059c7bdfbe2',
         fullFormRef: 'refs/heads/main'
     },
+
     // 'refs/heads/test'
     {
         ref: 'refs/heads/test',
@@ -31,6 +32,7 @@ export const refFixtures = [
         oid: '2dbee47a8d4f8d39e1168fad951b703ee05614d6',
         fullFormRef: 'refs/heads/test'
     },
+
     // 'remotes/origin/HEAD'
     {
         ref: 'remotes/origin/HEAD',
@@ -42,6 +44,7 @@ export const refFixtures = [
         oid: '7b84f676f2fbea2a3c6d83924fa63059c7bdfbe2',
         fullFormRef: 'refs/remotes/origin/HEAD'
     },
+
     // 'refs/remotes/origin/main'
     {
         ref: 'refs/remotes/origin/main',
@@ -58,6 +61,12 @@ export const refFixtures = [
         oid: '7b84f676f2fbea2a3c6d83924fa63059c7bdfbe2',
         fullFormRef: 'refs/remotes/origin/main'
     },
+    {
+        ref: 'origin',
+        oid: '7b84f676f2fbea2a3c6d83924fa63059c7bdfbe2',
+        fullFormRef: 'refs/remotes/origin/HEAD'
+    },
+
     // tags
     {
         ref: 'refs/tags/onmain-tag',
@@ -74,7 +83,9 @@ export const refFixtures = [
         oid: '7c2a62cdbc2ef28afaaed3b6f3aef9b581e5aa8e',
         fullFormRef: 'refs/tags/onmain-tag'
     },
-    //  symbolic ref names
+
+    // https://git-scm.com/docs/git-rev-parse.html#Documentation/git-rev-parse.txt-emltrefnamegtemegemmasterememheadsmasterememrefsheadsmasterem
+    // symbolic ref names
     {
         ref: 'HEAD',
         oid: '2dbee47a8d4f8d39e1168fad951b703ee05614d6',

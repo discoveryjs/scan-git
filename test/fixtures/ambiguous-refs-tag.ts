@@ -1,4 +1,4 @@
-// https://git-scm.com/docs/git-rev-parse.html#Docuzmentation/git-rev-parse.txt-emltrefnamegtemegemmasterememheadsmasterememrefsheadsmasterem
+// https://git-scm.com/docs/git-rev-parse.html#Documentation/git-rev-parse.txt-emltrefnamegtemegemmasterememheadsmasterememrefsheadsmasterem
 export const shouldBeTag = [
     // refs/tags/should-be-tag
     {
@@ -48,7 +48,7 @@ export const shouldBeTag = [
         oid: '7b84f676f2fbea2a3c6d83924fa63059c7bdfbe2'
     },
 
-    // with-slash
+    // inside the with-slash folder
     // refs/tags/with-slash/should-be-tag
     {
         ref: 'refs/tags/with-slash/should-be-tag',
@@ -81,6 +81,16 @@ export const shouldBeTag = [
     {
         ref: 'remotes/with-slash/should-be-tag',
         oid: '7b84f676f2fbea2a3c6d83924fa63059c7bdfbe2'
+    },
+
+    // refs/remotes/origin/with-slash/should-be-tag
+    {
+        ref: 'refs/remotes/origin/with-slash/should-be-tag',
+        oid: '2dbee47a8d4f8d39e1168fad951b703ee05614d6'
+    },
+    {
+        ref: 'remotes/origin/with-slash/should-be-tag',
+        oid: '2dbee47a8d4f8d39e1168fad951b703ee05614d6'
     },
     {
         ref: 'origin/with-slash/should-be-tag',

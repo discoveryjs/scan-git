@@ -1,12 +1,12 @@
 import assert from 'assert';
 import { fixtures } from './helpers/fixture.js';
-import { refFixtures } from './ref-fixtures.js';
-import { wrongRefFixtures } from './wrong-ref-fixtures.js';
+import { validRefs } from './fixtures/valid-refs.js';
+import { invalidRefs } from './fixtures/invalid-refs.js';
 
 // ambiguous ref resolving priority
-import { shouldBeTag } from './ambiguous-refs-tag.js';
-import { shouldBeHead } from './ambiguous-refs-head.js';
-import { shouldBeRemoteHead } from './ambiguous-refs-remote-head.js';
+import { shouldBeTag } from './fixtures/ambiguous-refs-tag.js';
+import { shouldBeBranch } from './fixtures/ambiguous-refs-head.js';
+import { shouldBeRemoteHead } from './fixtures/ambiguous-refs-remote-head.js';
 
 describe('resolve-ref', () => {
     let repo;
@@ -60,7 +60,7 @@ describe('resolve-ref', () => {
                 'should-be-head',
                 'should-be-remote-head',
                 'should-be-tag',
-                'with-slash/should-be-head',
+                'with-slash/should-be-remote-head',
                 'with-slash/should-be-tag'
             ];
 
@@ -79,7 +79,7 @@ describe('resolve-ref', () => {
                     oid: '7b84f676f2fbea2a3c6d83924fa63059c7bdfbe2'
                 },
                 {
-                    name: 'with-slash/should-be-head',
+                    name: 'with-slash/should-be-remote-head',
                     oid: '2dbee47a8d4f8d39e1168fad951b703ee05614d6'
                 },
                 {
@@ -146,7 +146,7 @@ describe('resolve-ref', () => {
         });
 
         describe('ref into oid', () => {
-            for (const testCase of refFixtures) {
+            for (const testCase of validRefs) {
                 it(testCase.ref, async () => {
                     const actual = await repo.resolveRef(testCase.ref);
                     const expected = testCase.oid;
@@ -156,8 +156,8 @@ describe('resolve-ref', () => {
             }
         });
 
-        describe('refs starting with "ref: " ', () => {
-            for (const testCase of refFixtures) {
+        describe('refs starting with "ref: "', () => {
+            for (const testCase of validRefs) {
                 it(testCase.ref, async () => {
                     const actual = await repo.resolveRef('ref: ' + testCase.ref);
                     const expected = testCase.oid;
@@ -167,29 +167,18 @@ describe('resolve-ref', () => {
             }
         });
 
-        describe('throws not found error with correct, but broken refs', () => {
-            for (const testCase of refFixtures) {
-                it(testCase.ref, () => {
-                    assert.rejects(
-                        () => repo.resolveRef(testCase.ref + 'n'),
-                        /ref not found refs\/heads\/mainn/
-                    );
-                });
-            }
-        });
-
         describe('throws not found error with wrong ref', () => {
-            for (const testCase of wrongRefFixtures) {
+            for (const testCase of invalidRefs) {
                 it(testCase.ref, () => {
                     assert.rejects(
-                        () => repo.resolveRef(testCase.ref + 'n'),
+                        () => repo.resolveRef(testCase.ref),
                         /ref not found refs\/heads\/mainn/
                     );
                 });
             }
         });
 
-        describe('shouldBeTag ref for ambiguous refs priority', () => {
+        describe('returns shouldBeTag ref for ambiguous refs priority', () => {
             for (const testCase of shouldBeTag) {
                 it(testCase.ref, async () => {
                     const actual = await repo.resolveRef(testCase.ref);
@@ -200,8 +189,8 @@ describe('resolve-ref', () => {
             }
         });
 
-        describe('shouldBeHead ref for ambiguous refs priority', () => {
-            for (const testCase of shouldBeHead) {
+        describe('returns shouldBeHead ref for ambiguous refs priority', () => {
+            for (const testCase of shouldBeBranch) {
                 it(testCase.ref, async () => {
                     const actual = await repo.resolveRef(testCase.ref);
                     const expected = testCase.oid;
@@ -211,7 +200,7 @@ describe('resolve-ref', () => {
             }
         });
 
-        describe('shouldBeRemoteHead ref for ambiguous refs priority', () => {
+        describe('returns shouldBeRemoteHead ref for ambiguous refs priority', () => {
             for (const testCase of shouldBeRemoteHead) {
                 it(testCase.ref, async () => {
                     const actual = await repo.resolveRef(testCase.ref);
@@ -231,8 +220,15 @@ describe('resolve-ref', () => {
             assert.strictEqual(actual, oid);
         });
 
+        it('invalid ref', async () => {
+            const actual = await repo.expandRef('refs/heads/mainnn');
+            const expected = null;
+
+            assert.strictEqual(actual, expected);
+        });
+
         describe('all ref types', () => {
-            for (const testCase of refFixtures) {
+            for (const testCase of validRefs) {
                 it(testCase.ref, async () => {
                     const actual = await repo.expandRef(testCase.ref);
                     const expected = testCase.fullFormRef;
@@ -241,33 +237,18 @@ describe('resolve-ref', () => {
                 });
             }
         });
-
-        describe('non-exists refs', () => {
-            for (const testCase of refFixtures) {
-                it(testCase.ref, async () => {
-                    const actual = await repo.expandRef(testCase.ref + 'n');
-                    const expected = null;
-
-                    assert.strictEqual(actual, expected);
-                });
-            }
-        });
     });
 
     describe('isRefExists()', () => {
-        describe('ref doesnt exist', () => {
-            for (const testCase of refFixtures) {
-                it(testCase.ref, async () => {
-                    const actual = await repo.isRefExists(testCase.ref + 'n');
-                    const expected = false;
+        it('ref doesnt exist', async () => {
+            const actual = await repo.isRefExists('refs/heads/mainnn');
+            const expected = false;
 
-                    assert.strictEqual(actual, expected);
-                });
-            }
+            assert.strictEqual(actual, expected);
         });
 
         describe('ref is correct', () => {
-            for (const testCase of refFixtures) {
+            for (const testCase of validRefs) {
                 it(testCase.ref, async () => {
                     const actual = await repo.isRefExists(testCase.ref);
                     const expected = true;
