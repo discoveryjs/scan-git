@@ -1,11 +1,11 @@
-export function binarySearchHash(hashes: Buffer, hash: Buffer, l: number, h: number) {
-    const firstInt32 = hash.readUInt32BE(1);
+export function binarySearchHash(names: Buffer, hash: Buffer, l: number, h: number) {
+    const firstUInt32 = hash.readUInt32BE(1);
 
     while (l <= h) {
         const m = l + ((h - l) >> 1);
         const mo = m * 20;
         const res =
-            firstInt32 - hashes.readUInt32BE(mo + 1) || hash.compare(hashes, mo + 5, mo + 20, 5);
+            firstUInt32 - names.readUInt32BE(mo + 1) || hash.compare(names, mo + 5, mo + 20, 5);
 
         if (res === 0) {
             return m;
