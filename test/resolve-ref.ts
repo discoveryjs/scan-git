@@ -2,11 +2,11 @@ import assert from 'assert';
 import { fixtures } from './helpers/fixture.js';
 import { validRefs } from './fixtures/valid-refs.js';
 import { invalidRefs } from './fixtures/invalid-refs.js';
-
-// ambiguous ref resolving priority
-import { shouldBeTag } from './fixtures/ambiguous-refs-tag.js';
-import { shouldBeBranch } from './fixtures/ambiguous-refs-head.js';
-import { shouldBeRemoteHead } from './fixtures/ambiguous-refs-remote-head.js';
+import {
+    ambiguousRefsTag,
+    ambiguousRefsBranch,
+    ambiguousRefsRemoteBranch
+} from './fixtures/ambiguous-refs.js';
 
 describe('resolve-ref', () => {
     let repo;
@@ -18,6 +18,7 @@ describe('resolve-ref', () => {
             const expected = [
                 'main',
                 'onmain-branch',
+                'packed',
                 'should-be-head',
                 'should-be-tag',
                 'test',
@@ -33,6 +34,10 @@ describe('resolve-ref', () => {
             const expected = [
                 { name: 'main', oid: '7b84f676f2fbea2a3c6d83924fa63059c7bdfbe2' },
                 { name: 'onmain-branch', oid: '7c2a62cdbc2ef28afaaed3b6f3aef9b581e5aa8e' },
+                {
+                    name: 'packed',
+                    oid: '7b84f676f2fbea2a3c6d83924fa63059c7bdfbe2'
+                },
                 { name: 'should-be-head', oid: '7b84f676f2fbea2a3c6d83924fa63059c7bdfbe2' },
                 {
                     name: 'should-be-tag',
@@ -57,6 +62,7 @@ describe('resolve-ref', () => {
             const expected = [
                 'HEAD',
                 'main',
+                'packed',
                 'should-be-head',
                 'should-be-remote-head',
                 'should-be-tag',
@@ -72,6 +78,10 @@ describe('resolve-ref', () => {
             const expected = [
                 { name: 'HEAD', oid: '7b84f676f2fbea2a3c6d83924fa63059c7bdfbe2' },
                 { name: 'main', oid: '7b84f676f2fbea2a3c6d83924fa63059c7bdfbe2' },
+                {
+                    name: 'packed',
+                    oid: '7b84f676f2fbea2a3c6d83924fa63059c7bdfbe2'
+                },
                 { name: 'should-be-head', oid: '7c2a62cdbc2ef28afaaed3b6f3aef9b581e5aa8e' },
                 { name: 'should-be-remote-head', oid: '7b84f676f2fbea2a3c6d83924fa63059c7bdfbe2' },
                 {
@@ -146,68 +156,39 @@ describe('resolve-ref', () => {
         });
 
         describe('ref into oid', () => {
-            for (const testCase of validRefs) {
-                it(testCase.ref, async () => {
-                    const actual = await repo.resolveRef(testCase.ref);
-                    const expected = testCase.oid;
+            for (const { refs, oid: expected } of validRefs) {
+                for (const ref of refs) {
+                    it(ref, async () => {
+                        const actual = await repo.resolveRef(ref);
 
-                    assert.strictEqual(actual, expected);
-                });
+                        assert.strictEqual(actual, expected);
+                    });
+                }
             }
         });
 
         describe('refs starting with "ref: "', () => {
-            for (const testCase of validRefs) {
-                it(testCase.ref, async () => {
-                    const actual = await repo.resolveRef('ref: ' + testCase.ref);
-                    const expected = testCase.oid;
+            for (const { refs, oid: expected } of validRefs) {
+                for (const ref of refs) {
+                    it(ref, async () => {
+                        const actual = await repo.resolveRef('ref: ' + ref);
 
-                    assert.strictEqual(actual, expected);
-                });
+                        assert.strictEqual(actual, expected);
+                    });
+                }
             }
         });
 
-        describe('throws not found error with wrong ref', () => {
-            for (const testCase of invalidRefs) {
-                it(testCase.ref, () => {
-                    assert.rejects(
-                        () => repo.resolveRef(testCase.ref),
-                        /ref not found refs\/heads\/mainn/
-                    );
-                });
-            }
-        });
-
-        describe('returns shouldBeTag ref for ambiguous refs priority', () => {
-            for (const testCase of shouldBeTag) {
-                it(testCase.ref, async () => {
-                    const actual = await repo.resolveRef(testCase.ref);
-                    const expected = testCase.oid;
-
-                    assert.strictEqual(actual, expected);
-                });
-            }
-        });
-
-        describe('returns shouldBeHead ref for ambiguous refs priority', () => {
-            for (const testCase of shouldBeBranch) {
-                it(testCase.ref, async () => {
-                    const actual = await repo.resolveRef(testCase.ref);
-                    const expected = testCase.oid;
-
-                    assert.strictEqual(actual, expected);
-                });
-            }
-        });
-
-        describe('returns shouldBeRemoteHead ref for ambiguous refs priority', () => {
-            for (const testCase of shouldBeRemoteHead) {
-                it(testCase.ref, async () => {
-                    const actual = await repo.resolveRef(testCase.ref);
-                    const expected = testCase.oid;
-
-                    assert.strictEqual(actual, expected);
-                });
+        describe('throws not found error with wrong refs', () => {
+            for (const { refs } of invalidRefs) {
+                for (const ref of refs) {
+                    it(ref, async () => {
+                        await assert.rejects(
+                            () => repo.resolveRef(ref),
+                            /Reference "\S+" is not found/
+                        );
+                    });
+                }
             }
         });
     });
@@ -220,42 +201,84 @@ describe('resolve-ref', () => {
             assert.strictEqual(actual, oid);
         });
 
-        it('invalid ref', async () => {
-            const actual = await repo.expandRef('refs/heads/mainnn');
-            const expected = null;
+        describe('returns null for invalid refs', () => {
+            for (const { refs } of invalidRefs) {
+                for (const ref of refs) {
+                    it(ref, async () => {
+                        const actual = await repo.expandRef(ref);
 
-            assert.strictEqual(actual, expected);
+                        assert.strictEqual(actual, null);
+                    });
+                }
+            }
         });
 
-        describe('all ref types', () => {
-            for (const testCase of validRefs) {
-                it(testCase.ref, async () => {
-                    const actual = await repo.expandRef(testCase.ref);
-                    const expected = testCase.fullFormRef;
+        describe('should expand valid refs into a full path', () => {
+            for (const { refs, expandsTo: expected } of validRefs) {
+                for (const ref of refs) {
+                    it(ref, async () => {
+                        const actual = await repo.expandRef(ref);
 
-                    assert.strictEqual(actual, expected);
-                });
+                        assert.strictEqual(actual, expected);
+                    });
+                }
+            }
+        });
+
+        describe('should expand an ambiguous ref into tag full path first', () => {
+            for (const { refs, expandsTo: expected } of ambiguousRefsTag) {
+                for (const ref of refs) {
+                    it(ref, async () => {
+                        const actual = await repo.expandRef(ref);
+
+                        assert.strictEqual(actual, expected);
+                    });
+                }
+            }
+        });
+
+        describe('should expand an ambiguous ref into branch full path if no tag exists', () => {
+            for (const { refs, expandsTo: expected } of ambiguousRefsBranch) {
+                for (const ref of refs) {
+                    it(ref, async () => {
+                        const actual = await repo.expandRef(ref);
+
+                        assert.strictEqual(actual, expected);
+                    });
+                }
+            }
+        });
+
+        describe('should expand an ambiguous ref into branch full path if no tag or local branch exist', () => {
+            for (const { refs, expandsTo: expected } of ambiguousRefsRemoteBranch) {
+                for (const ref of refs) {
+                    it(ref, async () => {
+                        const actual = await repo.expandRef(ref);
+
+                        assert.strictEqual(actual, expected);
+                    });
+                }
             }
         });
     });
 
     describe('isRefExists()', () => {
-        it('ref doesnt exist', async () => {
-            const actual = await repo.isRefExists('refs/heads/mainnn');
-            const expected = false;
+        describe('returns true for valid refs', () => {
+            for (const { refs } of validRefs) {
+                for (const ref of refs) {
+                    it(ref, async () => {
+                        const actual = await repo.isRefExists(ref);
 
-            assert.strictEqual(actual, expected);
+                        assert.strictEqual(actual, true);
+                    });
+                }
+            }
         });
 
-        describe('ref is correct', () => {
-            for (const testCase of validRefs) {
-                it(testCase.ref, async () => {
-                    const actual = await repo.isRefExists(testCase.ref);
-                    const expected = true;
+        it('returns false for non-existing refs', async () => {
+            const actual = await repo.isRefExists('refs/heads/mainnn');
 
-                    assert.strictEqual(actual, expected);
-                });
-            }
+            assert.strictEqual(actual, false);
         });
     });
 });

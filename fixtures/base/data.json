@@ -20676,7 +20676,7 @@
         ]
     },
     "stat": {
-        "size": 163689,
+        "size": 163827,
         "refs": {
             "remotes": [
                 {
@@ -20684,6 +20684,7 @@
                     "branches": [
                         "main",
                         "onmain-branch",
+                        "packed",
                         "should-be-head",
                         "should-be-tag",
                         "test",
@@ -20696,6 +20697,7 @@
                     "branches": [
                         "HEAD",
                         "main",
+                        "packed",
                         "should-be-head",
                         "should-be-remote-head",
                         "should-be-tag",
@@ -20714,6 +20716,7 @@
             "branches": [
                 "main",
                 "onmain-branch",
+                "packed",
                 "should-be-head",
                 "should-be-tag",
                 "test",
@@ -21205,7 +21208,7 @@
             },
             {
                 "path": "packed-refs",
-                "size": 231
+                "size": 358
             },
             {
                 "path": "refs/heads/main",
@@ -21221,7 +21224,7 @@
             },
             {
                 "path": "refs/heads/should-be-tag",
-                "size": 40
+                "size": 41
             },
             {
                 "path": "refs/heads/test",
@@ -21229,11 +21232,11 @@
             },
             {
                 "path": "refs/heads/with-slash/should-be-head",
-                "size": 40
+                "size": 41
             },
             {
                 "path": "refs/heads/with-slash/should-be-tag",
-                "size": 40
+                "size": 41
             },
             {
                 "path": "refs/remotes/origin/HEAD",
@@ -21253,27 +21256,27 @@
             },
             {
                 "path": "refs/remotes/origin/with-slash/should-be-remote-head",
-                "size": 40
+                "size": 41
             },
             {
                 "path": "refs/remotes/origin/with-slash/should-be-tag",
-                "size": 40
+                "size": 41
             },
             {
                 "path": "refs/remotes/should-be-head",
-                "size": 40
+                "size": 41
             },
             {
                 "path": "refs/remotes/should-be-tag",
-                "size": 40
+                "size": 41
             },
             {
                 "path": "refs/remotes/with-slash/should-be-head",
-                "size": 40
+                "size": 41
             },
             {
                 "path": "refs/remotes/with-slash/should-be-tag",
-                "size": 40
+                "size": 41
             },
             {
                 "path": "refs/tags/onmain-tag",
@@ -21281,7 +21284,7 @@
             },
             {
                 "path": "refs/tags/should-be-tag",
-                "size": 40
+                "size": 41
             },
             {
                 "path": "refs/tags/test-annotated-tag",
@@ -21293,7 +21296,7 @@
             },
             {
                 "path": "refs/tags/with-slash/should-be-tag",
-                "size": 40
+                "size": 41
             }
         ]
     }

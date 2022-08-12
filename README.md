@@ -28,8 +28,8 @@ createGitReader('path/to/.git').then(async (repo) => {
 
 #### repo.resolveRef(ref)
 
-Resolves ref into oid if it exists, otherwise throws error "(ref) is not found".
-In case ref is represented as oid, returns this oid hash back. If ref is not in a full form, expands it first.
+Resolves `ref` into oid if it exists, otherwise throws an exception.
+In case if `ref` is oid, returns this oid back. If ref is not a full path, expands it first.
 
 ```js
 const oid = repo.resolveRef('main');
@@ -38,8 +38,8 @@ const oid = repo.resolveRef('main');
 
 #### repo.expandRef(ref)
 
-Expands a ref into a full form as: "refs/heads/…".
-Returns null if ref doesn't exist. If ref is already in the full form returns it without any changes. For the symbolic ref names such as FETH_HEAD, HEAD, etc. returns it same as with refs in full form.
+Expands a ref into a full path, i.e. `'main'` -> `'refs/heads/main'`.
+Returns `null` if ref doesn't exist. For the symbolic ref names (`'HEAD'`, `'FETCH_HEAD'`, `'CHERRY_PICK_HEAD'`, `'MERGE_HEAD'` and `'ORIG_HEAD'`) returns a name without changes.
 
 ```js
 const fullPath = repo.expandRef('heads/main');
@@ -48,7 +48,7 @@ const fullPath = repo.expandRef('heads/main');
 
 #### repo.isRefExists(ref)
 
-Checks if commit exists on the given reference.
+Checks if a `ref` exists.
 
 ```js
 const isValidRef = repo.isRefExists('main');
