@@ -1,17 +1,20 @@
 import { promises as fsPromises, existsSync } from 'fs';
-import { join as pathJoin } from 'path';
+import { join as pathJoin, sep as pathSep } from 'path';
 import { scanFs } from '@discoveryjs/scan-fs';
 
 type Ref = { name: string; oid: string };
 
+// NOTICE: Don't forget to update README.md when change the values
+const symbolicRefs = new Set(['HEAD', 'FETCH_HEAD', 'CHERRY_PICK_HEAD', 'MERGE_HEAD', 'ORIG_HEAD']);
+
 // https://git-scm.com/docs/git-rev-parse.html#_specifying_revisions
 const refpaths = (ref: string) => [
     ref,
-    pathJoin('refs', ref),
-    pathJoin('refs', 'tags', ref),
-    pathJoin('refs', 'heads', ref),
-    pathJoin('refs', 'remotes', ref),
-    pathJoin('refs', 'remotes', ref, 'HEAD')
+    ['refs', ref].join(pathSep),
+    ['refs', 'tags', ref].join(pathSep),
+    ['refs', 'heads', ref].join(pathSep),
+    ['refs', 'remotes', ref].join(pathSep),
+    ['refs', 'remotes', ref, 'HEAD'].join(pathSep)
 ];
 
 function isOid(value: unknown) {
@@ -19,9 +22,15 @@ function isOid(value: unknown) {
 }
 
 export async function createRefIndex(gitdir: string) {
+    const looseRefsPath = pathJoin(gitdir, 'refs', '');
     const packedRefs = await readPackedRefs(gitdir);
+
     // expand a ref into a full form
     const expandRef = async (ref: string) => {
+        if (symbolicRefs.has(ref)) {
+            return ref;
+        }
+
         // Look in all the proper paths, in this order
         for (const candidateRef of refpaths(ref)) {
             if (packedRefs.has(candidateRef)) {
@@ -29,10 +38,15 @@ export async function createRefIndex(gitdir: string) {
             }
 
             try {
-                const stat = await fsPromises.stat(pathJoin(gitdir, candidateRef));
+                const refPath = pathJoin(gitdir, candidateRef);
+                const expectedRefPath = `${gitdir}${pathSep}${candidateRef}`;
 
-                if (stat.isFile()) {
-                    return candidateRef;
+                if (refPath === expectedRefPath && refPath.startsWith(looseRefsPath)) {
+                    const stat = await fsPromises.stat(refPath);
+
+                    if (stat.isFile()) {
+                        return candidateRef;
+                    }
                 }
             } catch {}
         }
@@ -49,10 +63,16 @@ export async function createRefIndex(gitdir: string) {
                 continue;
             }
 
+            // For files where appears additional information, such as tags, branch names and commentsj
+            if (/\s/.test(ref)) {
+                ref = ref.split(/\s+/)[0];
+                continue;
+            }
+
             const expandedRef = await expandRef(ref);
 
             if (expandedRef === null) {
-                throw new Error("Can't resolve ref");
+                throw new Error(`Reference "${ref}" is not found`);
             }
 
             ref =
@@ -139,10 +159,7 @@ export async function createRefIndex(gitdir: string) {
             return isOid(ref) ? ref : expandRef(ref);
         },
         async isRefExists(ref: string) {
-            return expandRef(ref).then(
-                () => true,
-                () => false
-            );
+            return (await expandRef(ref)) !== null;
         },
 
         listRemotes,
@@ -168,15 +185,7 @@ export async function createRefIndex(gitdir: string) {
 
 // https://stackoverflow.com/a/40355107/2168416
 function compareRefNames(a: Ref, b: Ref) {
-    const _a = a.name.replace(/\^\{\}$/, '');
-    const _b = b.name.replace(/\^\{\}$/, '');
-    const cmp = -(_a < _b) || Number(_a > _b);
-
-    if (cmp === 0) {
-        return a.name.endsWith('^{}') ? 1 : -1;
-    }
-
-    return cmp;
+    return a.name < b.name ? -1 : 1;
 }
 
 async function readPackedRefs(gitdir: string) {

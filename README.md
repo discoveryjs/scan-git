@@ -24,13 +24,45 @@ createGitReader('path/to/.git').then(async (repo) => {
 
 ### Refs
 
+- `ref`: string – reference to commit in repository
+
 #### repo.resolveRef(ref)
+
+Resolves `ref` into oid if it exists, otherwise throws an exception.
+In case if `ref` is oid, returns this oid back. If ref is not a full path, expands it first.
+
+```js
+const oid = repo.resolveRef('main');
+// '8bb6e23769902199e39ab70f2441841712cbdd62'
+```
 
 #### repo.expandRef(ref)
 
+Expands a ref into a full path, i.e. `'main'` -> `'refs/heads/main'`.
+Returns `null` if ref doesn't exist. For the symbolic ref names (`'HEAD'`, `'FETCH_HEAD'`, `'CHERRY_PICK_HEAD'`, `'MERGE_HEAD'` and `'ORIG_HEAD'`) returns a name without changes.
+
+```js
+const fullPath = repo.expandRef('heads/main');
+// 'refs/heads/main'
+```
+
 #### repo.isRefExists(ref)
 
+Checks if a `ref` exists.
+
+```js
+const isValidRef = repo.isRefExists('main');
+// true
+```
+
 #### repo.listRemotes()
+
+```js
+const remotes = repo.listRemotes();
+//[ 'HEAD',
+//  'main'
+// ]
+```
 
 #### repo.listBranches(remote?)
 

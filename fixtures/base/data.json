@@ -20676,7 +20676,7 @@
         ]
     },
     "stat": {
-        "size": 162549,
+        "size": 163827,
         "refs": {
             "remotes": [
                 {
@@ -20684,26 +20684,52 @@
                     "branches": [
                         "main",
                         "onmain-branch",
-                        "test"
+                        "packed",
+                        "should-be-head",
+                        "should-be-tag",
+                        "test",
+                        "with-slash/should-be-head",
+                        "with-slash/should-be-tag"
                     ]
                 },
                 {
                     "remote": "origin",
                     "branches": [
                         "HEAD",
-                        "main"
+                        "main",
+                        "packed",
+                        "should-be-head",
+                        "should-be-remote-head",
+                        "should-be-tag",
+                        "with-slash/should-be-remote-head",
+                        "with-slash/should-be-tag"
+                    ]
+                },
+                {
+                    "remote": "with-slash",
+                    "branches": [
+                        "should-be-head",
+                        "should-be-tag"
                     ]
                 }
             ],
             "branches": [
                 "main",
                 "onmain-branch",
-                "test"
+                "packed",
+                "should-be-head",
+                "should-be-tag",
+                "test",
+                "with-slash/should-be-head",
+                "with-slash/should-be-tag"
             ],
             "tags": [
                 "onmain-tag",
+                "should-be-tag",
                 "test-annotated-tag",
-                "test-tag"
+                "test-annotated-tag/packed",
+                "test-tag",
+                "with-slash/should-be-tag"
             ]
         },
         "objects": {
@@ -21050,12 +21076,32 @@
         },
         "files": [
             {
+                "path": "CHERRY_PICK_HEAD",
+                "size": 110
+            },
+            {
                 "path": "COMMIT_EDITMSG",
                 "size": 12
             },
             {
+                "path": "FETCH_HEAD",
+                "size": 115
+            },
+            {
+                "path": "FOO_HEAD",
+                "size": 41
+            },
+            {
                 "path": "HEAD",
                 "size": 21
+            },
+            {
+                "path": "MERGE_HEAD",
+                "size": 110
+            },
+            {
+                "path": "ORIG_HEAD",
+                "size": 41
             },
             {
                 "path": "config",
@@ -21183,7 +21229,7 @@
             },
             {
                 "path": "packed-refs",
-                "size": 112
+                "size": 358
             },
             {
                 "path": "refs/heads/main",
@@ -21194,7 +21240,23 @@
                 "size": 41
             },
             {
+                "path": "refs/heads/should-be-head",
+                "size": 41
+            },
+            {
+                "path": "refs/heads/should-be-tag",
+                "size": 41
+            },
+            {
                 "path": "refs/heads/test",
+                "size": 41
+            },
+            {
+                "path": "refs/heads/with-slash/should-be-head",
+                "size": 41
+            },
+            {
+                "path": "refs/heads/with-slash/should-be-tag",
                 "size": 41
             },
             {
@@ -21202,7 +21264,47 @@
                 "size": 30
             },
             {
+                "path": "refs/remotes/origin/should-be-head",
+                "size": 41
+            },
+            {
+                "path": "refs/remotes/origin/should-be-remote-head",
+                "size": 41
+            },
+            {
+                "path": "refs/remotes/origin/should-be-tag",
+                "size": 41
+            },
+            {
+                "path": "refs/remotes/origin/with-slash/should-be-remote-head",
+                "size": 41
+            },
+            {
+                "path": "refs/remotes/origin/with-slash/should-be-tag",
+                "size": 41
+            },
+            {
+                "path": "refs/remotes/should-be-head",
+                "size": 41
+            },
+            {
+                "path": "refs/remotes/should-be-tag",
+                "size": 41
+            },
+            {
+                "path": "refs/remotes/with-slash/should-be-head",
+                "size": 41
+            },
+            {
+                "path": "refs/remotes/with-slash/should-be-tag",
+                "size": 41
+            },
+            {
                 "path": "refs/tags/onmain-tag",
+                "size": 41
+            },
+            {
+                "path": "refs/tags/should-be-tag",
                 "size": 41
             },
             {
@@ -21211,6 +21313,10 @@
             },
             {
                 "path": "refs/tags/test-tag",
+                "size": 41
+            },
+            {
+                "path": "refs/tags/with-slash/should-be-tag",
                 "size": 41
             }
         ]
