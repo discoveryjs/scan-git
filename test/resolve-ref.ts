@@ -10,7 +10,7 @@ import {
 
 describe('resolve-ref', () => {
     let repo;
-    before(async () => (repo = await fixtures.base.repo));
+    before(async () => (repo = await fixtures.base.repo()));
 
     describe('listBranches()', () => {
         it('local branches', async () => {

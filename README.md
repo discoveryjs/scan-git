@@ -22,6 +22,19 @@ createGitReader('path/to/.git').then(async (repo) => {
 });
 ```
 
+#### createGitReader(gitdir, options?)
+
+- `gitdir`: string - path to the git repo
+- `options.cruftPacks`: CruftPackMode (default: `'include'`) - controls the inclusion of cruft packs in packed objects procession.
+
+#### CruftPackMode
+
+Defines how cruft packs are processed by git reader. Check [git docs](https://git-scm.com/docs/cruft-packs) to learn more about cruft packs.
+
+- `'include'` - processes all packs (alias `true`)
+- `'exclude'` - excludes cruft packs from processing (alias `false`)
+- `'only'` - processes cruft packs only
+
 ### Refs
 
 - `ref`: string – reference to commit in repository
@@ -161,7 +174,7 @@ const stats = await repo.stat();
 |    ✅    |       🚫       | [On-disk reverse indexes] (`*.rev` files) <br><sub>Reverse index is boosting operations such as a seeking an object by offset or scanning objects in a pack order</sub>                                                   |
 |    🚫    |       🚫       | [multi-pack-index] (MIDX) <br><sub>Stores a list of objects and their offsets into multiple packfiles, can provide O(log N) lookup time for any number of packfiles</sub>                                                 |
 |    🚫    |       🚫       | [multi-pack-index reverse indexes] (RIDX) <br><sub>Similar to the pack-based reverse index</sub>                                                                                                                          |
-|    🚫    |       🚫       | [Cruft packs] <br><sub>A cruft pack eliminates the need for storing unreachable objects in a loose state by including the per-object mtimes in a separate file alongside a single pack containing all loose objects</sub> |
+|    ✅    |       🚫       | [Cruft packs] <br><sub>A cruft pack eliminates the need for storing unreachable objects in a loose state by including the per-object mtimes in a separate file alongside a single pack containing all loose objects</sub> |
 |    🚫    |       🚫       | [Pack and multi-pack bitmaps] <br><sub>Bitmaps store reachability information about the set of objects in a packfile, or a multi-pack index</sub>                                                                         |
 | 🚫 (TBD) |       🚫       | [commit-graph] <br><sub>A binary file format that creates a structured representation of Git’s commit history, boost some operations</sub>                                                                                |
 

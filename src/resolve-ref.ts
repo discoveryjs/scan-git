@@ -84,6 +84,11 @@ export async function createRefIndex(gitdir: string) {
     };
 
     const listRemotes = async () => {
+        const remotesDir = pathJoin(gitdir, 'refs', 'remotes');
+        if (!existsSync(remotesDir)) {
+            return [];
+        }
+
         const remotes = [];
         const entries = await fsPromises.readdir(pathJoin(gitdir, 'refs', 'remotes'), {
             withFileTypes: true
@@ -107,18 +112,21 @@ export async function createRefIndex(gitdir: string) {
             const packedRefs = await readPackedRefs(gitdir);
             const refsMap = new Map<string, string>();
 
-            await scanFs({
-                basedir: pathJoin(gitdir, prefix),
-                rules: {
-                    async extract(file, content) {
-                        const oid = await resolveRef(content.trimEnd());
+            const refsDir = pathJoin(gitdir, prefix);
+            if (existsSync(refsDir)) {
+                await scanFs({
+                    basedir: refsDir,
+                    rules: {
+                        async extract(file, content) {
+                            const oid = await resolveRef(content.trimEnd());
 
-                        if (oid) {
-                            refsMap.set(file.path, oid);
+                            if (oid) {
+                                refsMap.set(file.path, oid);
+                            }
                         }
                     }
-                }
-            });
+                });
+            }
 
             // add refs filtered by a prefix as prefix
             for (const [ref, oid] of packedRefs.entries()) {
@@ -142,11 +150,7 @@ export async function createRefIndex(gitdir: string) {
     };
 
     const listBranches = (remote?: string | null, withOids = false) => {
-        if (remote) {
-            return listRefs(gitdir, `refs/remotes/${remote}/`, withOids);
-        } else {
-            return listRefs(gitdir, 'refs/heads/', withOids);
-        }
+        return listRefs(gitdir, remote ? `refs/remotes/${remote}/` : 'refs/heads/', withOids);
     };
 
     const listTags = (withOids = false) => {
