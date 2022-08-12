@@ -37,22 +37,20 @@ async function createLooseObjectMap(gitdir: string): Promise<LooseObjectMap> {
     return looseObjectMap;
 }
 
-function createGetOidFromHash(looseObjectMap: Map<string, string>) {
-    const hashes = Buffer.alloc(20 * looseObjectMap.size);
-    const oidByHash = new Array<string>(looseObjectMap.size);
+function indexLooseObjects(looseObjectMap: Map<string, string>) {
     const fanoutTable = new Array<[start: number, end: number]>(256);
-
-    [...looseObjectMap.keys()]
+    const names = Buffer.alloc(20 * looseObjectMap.size);
+    const oidByHash = [...looseObjectMap.keys()]
         .sort((a, b) => (a < b ? -1 : 1))
-        .forEach((oid, idx) => {
-            hashes.write(oid, idx * 20, 'hex');
-            oidByHash[idx] = oid;
+        .map((oid, idx) => {
+            names.write(oid, idx * 20, 'hex');
+            return oid;
         });
 
     for (let i = 0, j = 0, prevOffset = 0; i < 256; i++) {
         let offset = prevOffset;
 
-        while (j < hashes.length && hashes[j * 20] === i) {
+        while (j < names.length && names[j * 20] === i) {
             offset++;
             j++;
         }
@@ -61,15 +59,10 @@ function createGetOidFromHash(looseObjectMap: Map<string, string>) {
         prevOffset = offset;
     }
 
-    return function getOidFromHash(hash: Buffer) {
-        const [start, end] = fanoutTable[hash[0]];
-        const idx = start !== end ? binarySearchHash(hashes, hash, start, end - 1) : -1;
-
-        if (idx !== -1) {
-            return oidByHash[idx];
-        }
-
-        return null;
+    return {
+        fanoutTable,
+        names,
+        oidByHash
     };
 }
 
@@ -98,7 +91,19 @@ function parseLooseObject(buffer: Buffer): InternalGitObjectContent {
 
 export async function createLooseObjectIndex(gitdir: string) {
     const looseObjectMap = await createLooseObjectMap(gitdir);
-    const getOidFromHash = createGetOidFromHash(looseObjectMap);
+    const { fanoutTable, names, oidByHash } = indexLooseObjects(looseObjectMap);
+
+    const getOidFromHash = (hash: Buffer) => {
+        const [start, end] = fanoutTable[hash[0]];
+        const idx = start !== end ? binarySearchHash(names, hash, start, end - 1) : -1;
+
+        if (idx !== -1) {
+            return oidByHash[idx];
+        }
+
+        return null;
+    };
+
     const readObjectHeaderByOid = async (oid: string) => {
         const filepath = looseObjectMap.get(oid);
 
