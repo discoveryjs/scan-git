@@ -47,6 +47,9 @@ const types = [
     'ref_delta'
 ] as const;
 
+// Size of the base object name encoded in ref delta prelude
+const oidSize = 20;
+
 const buffers = new Array(5000);
 let reuseBufferCount = 0;
 
@@ -152,7 +155,7 @@ export class PackContent {
         if (btype === OBJ_OFS_DELTA) {
             deltaRef = offset - readEncodedOffset(reader);
         } else if (btype === OBJ_REF_DELTA) {
-            deltaRef = Buffer.from(reader.slice(20));
+            deltaRef = Buffer.from(reader.slice(oidSize));
         }
 
         return {
@@ -301,12 +304,17 @@ export class PackContent {
             objectsByType[btype].size += nextOffset - offset;
             objectsByType[btype].unpackedSize += length;
 
-            if (btype !== OBJ_OFS_DELTA) {
+            if (btype !== OBJ_OFS_DELTA && btype !== OBJ_REF_DELTA) {
                 continue;
             }
 
-            // read offset part to skip over to the size part
-            readEncodedOffset(reader);
+            if (btype === OBJ_OFS_DELTA) {
+                // skip offset part for ofs delta
+                readEncodedOffset(reader);
+            } else {
+                // skip oid part for ref delta
+                reader.offset += oidSize;
+            }
 
             const chunkSize = 512;
             let objectBuffer: Buffer;
