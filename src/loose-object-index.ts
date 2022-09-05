@@ -39,24 +39,17 @@ async function createLooseObjectMap(gitdir: string): Promise<LooseObjectMap> {
 
 function indexLooseObjects(looseObjectMap: Map<string, string>) {
     const fanoutTable = new Array<[start: number, end: number]>(256);
-    const names = Buffer.alloc(20 * looseObjectMap.size);
-    const oidByHash = [...looseObjectMap.keys()]
-        .sort((a, b) => (a < b ? -1 : 1))
-        .map((oid, idx) => {
-            names.write(oid, idx * 20, 'hex');
-            return oid;
-        });
+    const oidByHash = [...looseObjectMap.keys()].sort((a, b) => (a < b ? -1 : 1));
+    const names = Buffer.from(oidByHash.join(''), 'hex');
 
-    for (let i = 0, j = 0, prevOffset = 0; i < 256; i++) {
-        let offset = prevOffset;
+    for (let i = 0, offset = 0; i < 256; i++) {
+        const prevOffset = offset;
 
-        while (j < names.length && names[j * 20] === i) {
+        while (offset < names.length && names[offset * 20] === i) {
             offset++;
-            j++;
         }
 
         fanoutTable[i] = [prevOffset, offset];
-        prevOffset = offset;
     }
 
     return {

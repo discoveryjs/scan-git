@@ -10,8 +10,8 @@ export function createReadObject(
     looseObjectIndex: LooseObjectIndex,
     packedObjectIndex: PackedObjectIndex
 ) {
-    async function readObjectHeaderByHash(hash: Buffer) {
-        let result: InternalGitObjectHeader | null =
+    async function readObjectHeaderByHash(hash: Buffer): Promise<InternalGitObjectHeader> {
+        let result =
             (await looseObjectIndex.readObjectHeaderByHash(hash)) ||
             (await packedObjectIndex.readObjectHeaderByHash(hash)) ||
             null;
@@ -20,15 +20,15 @@ export function createReadObject(
             if (hash.equals(EMPTY_TREE_HASH)) {
                 result = { type: 'tree', length: 0 };
             } else {
-                throw new Error(`Object with id "${hash.toString('hex')}" is not found`);
+                throw new Error(`Object with oid "${hash.toString('hex')}" is not found`);
             }
         }
 
         return result;
     }
 
-    async function readObjectByHash(hash: Buffer, cache = true) {
-        let result: InternalGitObjectContent | null =
+    async function readObjectByHash(hash: Buffer, cache = true): Promise<InternalGitObjectContent> {
+        let result =
             (await looseObjectIndex.readObjectByHash(hash)) ||
             (await packedObjectIndex.readObjectByHash(hash, cache)) ||
             null;
@@ -37,15 +37,15 @@ export function createReadObject(
             if (hash.equals(EMPTY_TREE_HASH)) {
                 result = { type: 'tree', object: Buffer.from('') };
             } else {
-                throw new Error(`Object with id "${hash.toString('hex')}" is not found`);
+                throw new Error(`Object with oid "${hash.toString('hex')}" is not found`);
             }
         }
 
         return result;
     }
 
-    async function readObjectHeaderByOid(oid: string) {
-        let result: InternalGitObjectHeader | null =
+    async function readObjectHeaderByOid(oid: string): Promise<InternalGitObjectHeader> {
+        let result =
             (await looseObjectIndex.readObjectHeaderByOid(oid)) ||
             (await packedObjectIndex.readObjectHeaderByOid(oid)) ||
             null;
@@ -54,15 +54,15 @@ export function createReadObject(
             if (oid === EMPTY_TREE_OID) {
                 result = { type: 'tree', length: 0 };
             } else {
-                throw new Error(`Object with id "${oid}" is not found`);
+                throw new Error(`Object with oid "${oid}" is not found`);
             }
         }
 
         return result;
     }
 
-    async function readObjectByOid(oid: string, cache = true) {
-        let result: InternalGitObjectContent | null =
+    async function readObjectByOid(oid: string, cache = true): Promise<InternalGitObjectContent> {
+        let result =
             (await looseObjectIndex.readObjectByOid(oid)) ||
             (await packedObjectIndex.readObjectByOid(oid, cache)) ||
             null;
@@ -71,7 +71,7 @@ export function createReadObject(
             if (oid === EMPTY_TREE_OID) {
                 result = { type: 'tree', object: Buffer.from('') };
             } else {
-                throw new Error(`Object with id "${oid}" is not found`);
+                throw new Error(`Object with oid "${oid}" is not found`);
             }
         }
 
