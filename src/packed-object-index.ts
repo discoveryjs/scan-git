@@ -1,4 +1,4 @@
-import { join as pathJoin, relative as pathRelative, basename } from 'path';
+import { join as pathJoin, relative as pathRelative } from 'path';
 import { promises as fsPromises } from 'fs';
 import { PackContent, readPackFile } from './packed-pack.js';
 import {
@@ -55,7 +55,9 @@ export async function createPackedObjectIndex(
     const packdirFiles = await fsPromises.readdir(packdir);
     const cruftPackFileNames =
         cruftPacks !== 'include'
-            ? packdirFiles.filter((f) => f.endsWith('.mtimes')).map((f) => basename(f, '.mtimes'))
+            ? packdirFiles
+                  .filter((filename) => filename.endsWith('.mtimes'))
+                  .map((filename) => filename.replace(/\.mtimes/, '.pack'))
             : [];
 
     const packFilenames = packdirFiles
@@ -68,10 +70,9 @@ export async function createPackedObjectIndex(
                 return true;
             }
 
-            const fnWithoutExt = basename(filename, '.pack');
             return cruftPacks === 'only'
-                ? cruftPackFileNames.includes(fnWithoutExt)
-                : !cruftPackFileNames.includes(fnWithoutExt);
+                ? cruftPackFileNames.includes(filename)
+                : !cruftPackFileNames.includes(filename);
         })
         .map((filename) => `${packdir}/${filename}`);
 
@@ -89,6 +90,11 @@ export async function createPackedObjectIndex(
         readObjectByHash,
         readObjectByOid(oid: string, cache?: boolean) {
             return readObjectByHash(Buffer.from(oid, 'hex'), cache);
+        },
+
+        dispose() {
+            packFiles.forEach((packFile) => packFile.close());
+            packFiles.length = 0;
         },
 
         async stat() {

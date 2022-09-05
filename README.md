@@ -15,10 +15,12 @@ npm install @discoveryjs/scan-git
 ```js
 import { createGitReader } from '@discoveryjs/scan-git';
 
-createGitReader('path/to/.git').then(async (repo) => {
-  const commits = await repo.log({ ref: 'my-branch', depth: 10 });
+const repo = await createGitReader('path/to/.git');
+const commits = await repo.log({ ref: 'my-branch', depth: 10 });
 
-  console.log(commits);
+console.log(commits);
+
+await repo.dispose();
 });
 ```
 

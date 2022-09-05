@@ -142,6 +142,10 @@ export async function createLooseObjectIndex(gitdir: string) {
             return oid !== null ? readObjectByOid(oid) : null;
         },
 
+        dispose() {
+            looseObjectMap.clear();
+        },
+
         async stat() {
             const files = [];
             const objectsByType: Record<PackedObjectType, ObjectsTypeStat> = Object.create(null);

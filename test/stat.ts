@@ -8,6 +8,8 @@ describe('stat', () => {
             const actual = await repo.stat();
 
             assert.deepStrictEqual(actual, fixtures.base.data.stat);
+
+            return repo.dispose();
         });
 
         it('counts objects in cruft packs', async () => {
@@ -18,6 +20,8 @@ describe('stat', () => {
                 stat.objects.packed.objects.count,
                 fixtures.cruft.data.cruftObjects
             );
+
+            return repo.dispose();
         });
 
         it('counts objects in regular packs only', async () => {
@@ -28,6 +32,8 @@ describe('stat', () => {
                 stat.objects.packed.objects.count,
                 fixtures.cruft.data.packedObjects
             );
+
+            return repo.dispose();
         });
 
         it('counts all packed objects', async () => {
@@ -38,6 +44,8 @@ describe('stat', () => {
                 stat.objects.packed.objects.count,
                 fixtures.cruft.data.totalPackedObjects
             );
+
+            return repo.dispose();
         });
 
         it('counts all packed objects, when cruftPacks option is not specified', async () => {
@@ -48,6 +56,8 @@ describe('stat', () => {
                 stat.objects.packed.objects.count,
                 fixtures.cruft.data.totalPackedObjects
             );
+
+            return repo.dispose();
         });
     });
 });

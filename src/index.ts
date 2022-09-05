@@ -30,6 +30,9 @@ export async function createGitReader(gitdir: string, options?: GitReaderOptions
         ...refIndex,
         ...createFilesMethods(readObjectByOid, readObjectByHash, refIndex.resolveRef),
         ...createCommitMethods(readObjectByOid, refIndex.resolveRef),
+        async dispose() {
+            await Promise.all([looseObjectIndex.dispose(), packedObjectIndex.dispose()]);
+        },
         stat: createStatMethod({ gitdir, refIndex, looseObjectIndex, packedObjectIndex }),
 
         initTime: Date.now() - startInitTime

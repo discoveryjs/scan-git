@@ -11,6 +11,7 @@ import {
 describe('resolve-ref', () => {
     let repo;
     before(async () => (repo = await fixtures.base.repo()));
+    after(() => repo.dispose().then(() => (repo = null)));
 
     describe('listBranches()', () => {
         it('local branches', async () => {

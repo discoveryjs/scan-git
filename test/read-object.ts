@@ -4,6 +4,7 @@ import { fixtures } from './helpers/fixture.js';
 describe('read-object', () => {
     let repo;
     before(async () => (repo = await fixtures.base.repo()));
+    after(() => repo.dispose().then(() => (repo = null)));
 
     describe('readObjectByOid', () => {
         it('readObjectByOid()', async () => {

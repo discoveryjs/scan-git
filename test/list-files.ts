@@ -4,6 +4,7 @@ import { fixtures } from './helpers/fixture.js';
 describe('list files', () => {
     let repo;
     before(async () => (repo = await fixtures.base.repo()));
+    after(() => repo.dispose().then(() => (repo = null)));
 
     const { data } = fixtures.base;
     const headCommit = data.commits[0];

@@ -330,6 +330,10 @@ export class PackContent {
 
         return objectsByType.filter((stat) => stat.count > 0);
     }
+
+    close() {
+        this.fh.close();
+    }
 }
 
 export async function readPackFile(
