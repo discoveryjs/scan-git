@@ -17,6 +17,7 @@ describe('resolve-ref', () => {
         it('local branches', async () => {
             const actual = await repo.listBranches();
             const expected = [
+                'loose-and-packed',
                 'main',
                 'onmain-branch',
                 'packed',
@@ -31,8 +32,9 @@ describe('resolve-ref', () => {
         });
 
         it('local branches with oids', async () => {
-            const actual = await repo.listBranches(null, true);
+            const actual = await repo.listBranches(true);
             const expected = [
+                { name: 'loose-and-packed', oid: '2dbee47a8d4f8d39e1168fad951b703ee05614d6' },
                 { name: 'main', oid: '7b84f676f2fbea2a3c6d83924fa63059c7bdfbe2' },
                 { name: 'onmain-branch', oid: '7c2a62cdbc2ef28afaaed3b6f3aef9b581e5aa8e' },
                 {
@@ -59,7 +61,7 @@ describe('resolve-ref', () => {
         });
 
         it('remote branches', async () => {
-            const actual = await repo.listBranches('origin');
+            const actual = await repo.listRemoteBranches('origin');
             const expected = [
                 'HEAD',
                 'main',
@@ -75,7 +77,7 @@ describe('resolve-ref', () => {
         });
 
         it('remote branches with oids', async () => {
-            const actual = await repo.listBranches('origin', true);
+            const actual = await repo.listRemoteBranches('origin', true);
             const expected = [
                 { name: 'HEAD', oid: '7b84f676f2fbea2a3c6d83924fa63059c7bdfbe2' },
                 { name: 'main', oid: '7b84f676f2fbea2a3c6d83924fa63059c7bdfbe2' },
@@ -156,23 +158,17 @@ describe('resolve-ref', () => {
             assert.strictEqual(actual, oid);
         });
 
+        it('should use loose on resolve when a ref stored as loose and packed', async () => {
+            const actual = await repo.resolveRef('loose-and-packed');
+
+            assert.strictEqual(actual, '2dbee47a8d4f8d39e1168fad951b703ee05614d6');
+        });
+
         describe('ref into oid', () => {
             for (const { refs, oid: expected } of validRefs) {
                 for (const ref of refs) {
                     it(ref, async () => {
                         const actual = await repo.resolveRef(ref);
-
-                        assert.strictEqual(actual, expected);
-                    });
-                }
-            }
-        });
-
-        describe('refs starting with "ref: "', () => {
-            for (const { refs, oid: expected } of validRefs) {
-                for (const ref of refs) {
-                    it(ref, async () => {
-                        const actual = await repo.resolveRef('ref: ' + ref);
 
                         assert.strictEqual(actual, expected);
                     });

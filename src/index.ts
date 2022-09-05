@@ -11,9 +11,8 @@ export * from './types.js';
 export * from './parse-object.js';
 
 export async function createGitReader(gitdir: string, options?: GitReaderOptions) {
-    const normalizedOptions = normalizeOptions(options);
-
     const startInitTime = Date.now();
+    const normalizedOptions = normalizeOptions(options);
     const [refIndex, looseObjectIndex, packedObjectIndex] = await Promise.all([
         createRefIndex(gitdir),
         createLooseObjectIndex(gitdir),
@@ -23,6 +22,9 @@ export async function createGitReader(gitdir: string, options?: GitReaderOptions
         createReadObject(looseObjectIndex, packedObjectIndex);
 
     return {
+        get gitdir() {
+            return gitdir;
+        },
         readObjectHeaderByHash,
         readObjectByHash,
         readObjectHeaderByOid,

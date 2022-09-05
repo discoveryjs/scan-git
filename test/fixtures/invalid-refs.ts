@@ -13,7 +13,11 @@ export const invalidRefs = [
             '../HEAD',
             '/HEAD',
             'should-be-remote-head',
-            'refs/heads/mainnn'
+            'refs/heads/mainnn',
+            'refs/remotes/should-be-head',
+            'remotes/should-be-head',
+            'refs/remotes/should-be-tag',
+            'remotes/should-be-tag'
         ],
         oid: 'beda62cdbc2ef28afaaed3b6f3aef9b581e5aa8e'
     }

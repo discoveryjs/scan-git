@@ -7,10 +7,6 @@ export const ambiguousRefsBranch = [
         refs: ['refs/heads/should-be-head', 'heads/should-be-head', 'should-be-head']
     },
     {
-        expandsTo: 'refs/remotes/should-be-head',
-        refs: ['refs/remotes/should-be-head', 'remotes/should-be-head']
-    },
-    {
         expandsTo: 'refs/heads/with-slash/should-be-head',
         refs: [
             'refs/heads/with-slash/should-be-head',
@@ -51,10 +47,6 @@ export const ambiguousRefsTag = [
     {
         expandsTo: 'refs/heads/should-be-tag',
         refs: ['refs/heads/should-be-tag', 'heads/should-be-tag']
-    },
-    {
-        expandsTo: 'refs/remotes/should-be-tag',
-        refs: ['refs/remotes/should-be-tag', 'remotes/should-be-tag']
     },
     {
         expandsTo: 'refs/remotes/origin/should-be-tag',

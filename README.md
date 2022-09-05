@@ -39,7 +39,20 @@ Defines how cruft packs are processed by git reader. Check [git docs](https://gi
 
 ### Refs
 
-- `ref`: string – reference to commit in repository
+Common parameters:
+
+- `ref`: string – a reference to an object in repository
+- `withOid`: boolean – a flag to include resolved oid for a reference
+
+#### repo.expandRef(ref)
+
+Expands a `ref` into a full form, e.g. `'main'` -> `'refs/heads/main'`.
+Returns `null` if `ref` doesn't exist. For the symbolic ref names (`'HEAD'`, `'FETCH_HEAD'`, `'CHERRY_PICK_HEAD'`, `'MERGE_HEAD'` and `'ORIG_HEAD'`) returns a name without changes.
+
+```js
+const fullPath = repo.expandRef('heads/main');
+// 'refs/heads/main'
+```
 
 #### repo.resolveRef(ref)
 
@@ -49,16 +62,6 @@ In case if `ref` is oid, returns this oid back. If ref is not a full path, expan
 ```js
 const oid = repo.resolveRef('main');
 // '8bb6e23769902199e39ab70f2441841712cbdd62'
-```
-
-#### repo.expandRef(ref)
-
-Expands a ref into a full path, i.e. `'main'` -> `'refs/heads/main'`.
-Returns `null` if ref doesn't exist. For the symbolic ref names (`'HEAD'`, `'FETCH_HEAD'`, `'CHERRY_PICK_HEAD'`, `'MERGE_HEAD'` and `'ORIG_HEAD'`) returns a name without changes.
-
-```js
-const fullPath = repo.expandRef('heads/main');
-// 'refs/heads/main'
 ```
 
 #### repo.isRefExists(ref)
@@ -74,14 +77,64 @@ const isValidRef = repo.isRefExists('main');
 
 ```js
 const remotes = repo.listRemotes();
-//[ 'HEAD',
-//  'main'
+// [
+//   'origin'
 // ]
 ```
 
-#### repo.listBranches(remote?)
+#### repo.listRemoteBranches(remote, withOid?)
 
-#### repo.listTags()
+Get a list of branches for a remote.
+
+```js
+const originBranches = await repo.listRemoteBranches('origin');
+// [
+//   'HEAD',
+//   'main'
+// ]
+
+const originBranches = await repo.listRemoteBranches('origin', true);
+// [
+//   { name: 'HEAD', oid: '7c2a62cdbc2ef28afaaed3b6f3aef9b581e5aa8e' }
+//   { name: 'main', oid: '56ea7a808e35df13e76fee92725a65a373a9835c' }
+// ]
+```
+
+#### repo.listBranches(withOid?)
+
+Get a list of local branches.
+
+```js
+const localBranches = await repo.listBranches();
+// [
+//   'HEAD',
+//   'main'
+// ]
+
+const localBranches = await repo.listBranches(true);
+// [
+//   { name: 'HEAD', oid: '7c2a62cdbc2ef28afaaed3b6f3aef9b581e5aa8e' }
+//   { name: 'main', oid: '56ea7a808e35df13e76fee92725a65a373a9835c' }
+// ]
+```
+
+#### repo.listTags(withOid?)
+
+Get a list of tags.
+
+```js
+const tags = await repo.listTags();
+// [
+//   'v1.0.0',
+//   'some-feature'
+// ]
+
+const tags = await repo.listTags(true);
+// [
+//   { name: 'v1.0.0', oid: '7c2a62cdbc2ef28afaaed3b6f3aef9b581e5aa8e' }
+//   { name: 'some-feature', oid: '56ea7a808e35df13e76fee92725a65a373a9835c' }
+// ]
+```
 
 ### File lists
 

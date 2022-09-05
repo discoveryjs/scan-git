@@ -1,20 +1,20 @@
 import { promises as fsPromises, existsSync } from 'fs';
-import { join as pathJoin, sep as pathSep } from 'path';
+import { join as pathJoin } from 'path';
 import { scanFs } from '@discoveryjs/scan-fs';
 
 type Ref = { name: string; oid: string };
+type LooseRefFile = { path: string; content: string | null };
 
 // NOTICE: Don't forget to update README.md when change the values
 const symbolicRefs = new Set(['HEAD', 'FETCH_HEAD', 'CHERRY_PICK_HEAD', 'MERGE_HEAD', 'ORIG_HEAD']);
 
 // https://git-scm.com/docs/git-rev-parse.html#_specifying_revisions
 const refpaths = (ref: string) => [
-    ref,
-    ['refs', ref].join(pathSep),
-    ['refs', 'tags', ref].join(pathSep),
-    ['refs', 'heads', ref].join(pathSep),
-    ['refs', 'remotes', ref].join(pathSep),
-    ['refs', 'remotes', ref, 'HEAD'].join(pathSep)
+    `refs/${ref}`,
+    `refs/tags/${ref}`,
+    `refs/heads/${ref}`,
+    `refs/remotes/${ref}`,
+    `refs/remotes/${ref}/HEAD`
 ];
 
 function isOid(value: unknown) {
@@ -22,140 +22,82 @@ function isOid(value: unknown) {
 }
 
 export async function createRefIndex(gitdir: string) {
-    const looseRefsPath = pathJoin(gitdir, 'refs', '');
-    const packedRefs = await readPackedRefs(gitdir);
+    const refResolver = await createRefResolver(gitdir);
 
     // expand a ref into a full form
-    const expandRef = async (ref: string) => {
-        if (symbolicRefs.has(ref)) {
+    const expandRef = (ref: string) => {
+        if (refResolver.exists(ref)) {
             return ref;
         }
 
         // Look in all the proper paths, in this order
         for (const candidateRef of refpaths(ref)) {
-            if (packedRefs.has(candidateRef)) {
+            if (refResolver.exists(candidateRef)) {
                 return candidateRef;
             }
-
-            try {
-                const refPath = pathJoin(gitdir, candidateRef);
-                const expectedRefPath = `${gitdir}${pathSep}${candidateRef}`;
-
-                if (refPath === expectedRefPath && refPath.startsWith(looseRefsPath)) {
-                    const stat = await fsPromises.stat(refPath);
-
-                    if (stat.isFile()) {
-                        return candidateRef;
-                    }
-                }
-            } catch {}
         }
 
-        // Do we give up?
+        // Nothing found
         return null;
     };
     const resolveRef = async (ref: string) => {
         // Is it a complete and valid SHA?
-        while (!isOid(ref)) {
-            // Is it a ref pointer?
-            if (ref.startsWith('ref: ')) {
-                ref = ref.slice(5); // 'ref: '.length == 5
-                continue;
-            }
-
-            // For files where appears additional information, such as tags, branch names and commentsj
-            if (/\s/.test(ref)) {
-                ref = ref.split(/\s+/)[0];
-                continue;
-            }
-
-            const expandedRef = await expandRef(ref);
-
-            if (expandedRef === null) {
-                throw new Error(`Reference "${ref}" is not found`);
-            }
-
-            ref =
-                packedRefs.get(expandedRef) ||
-                (await fsPromises.readFile(pathJoin(gitdir, expandedRef), 'utf8')).trimEnd();
+        if (isOid(ref)) {
+            return ref;
         }
 
-        return ref;
+        const expandedRef = await expandRef(ref);
+
+        if (expandedRef === null) {
+            throw new Error(`Reference "${ref}" is not found`);
+        }
+
+        return refResolver.resolve(expandedRef);
     };
 
-    const listRemotes = async () => {
-        const remotesDir = pathJoin(gitdir, 'refs', 'remotes');
-        if (!existsSync(remotesDir)) {
-            return [];
-        }
-
-        const remotes = [];
-        const entries = await fsPromises.readdir(pathJoin(gitdir, 'refs', 'remotes'), {
-            withFileTypes: true
-        });
-
-        for (const entry of entries) {
-            if (entry.isDirectory()) {
-                remotes.push(entry.name);
-            }
-        }
-
-        return remotes;
-    };
+    const listRemotes = () => refResolver.remotes.slice();
 
     // List all the refs that match the prefix
-    const listRefsCache = new Map<string, Ref[]>();
-    const listRefs = async (gitdir: string, prefix: string, withOid: boolean) => {
-        let refs = listRefsCache.get(prefix);
+    const listRefsCache = new Map<string, string[]>();
+    const listRefsWithOidCache = new Map<string, Ref[]>();
+    const listRefs = async (prefix: string, withOid: boolean) => {
+        let cachedRefs = listRefsCache.get(prefix);
 
-        if (refs === undefined) {
-            const packedRefs = await readPackedRefs(gitdir);
-            const refsMap = new Map<string, string>();
+        if (cachedRefs === undefined) {
+            // all refs filtered by a prefix
+            cachedRefs = refResolver.names
+                .filter((name) => name.startsWith(prefix))
+                .map((name) => name.slice(prefix.length));
 
-            const refsDir = pathJoin(gitdir, prefix);
-            if (existsSync(refsDir)) {
-                await scanFs({
-                    basedir: refsDir,
-                    rules: {
-                        async extract(file, content) {
-                            const oid = await resolveRef(content.trimEnd());
+            listRefsCache.set(prefix, cachedRefs);
+        }
 
-                            if (oid) {
-                                refsMap.set(file.path, oid);
-                            }
-                        }
-                    }
+        if (!withOid) {
+            return cachedRefs.slice();
+        }
+
+        let cachedRefsWithOid = listRefsWithOidCache.get(prefix);
+
+        if (cachedRefsWithOid === undefined) {
+            cachedRefsWithOid = [];
+
+            for (const name of cachedRefs) {
+                cachedRefsWithOid.push({
+                    name,
+                    oid: await refResolver.resolve(prefix + name)
                 });
             }
 
-            // add refs filtered by a prefix as prefix
-            for (const [ref, oid] of packedRefs.entries()) {
-                if (ref.startsWith(prefix) && !ref.endsWith('^{}')) {
-                    refsMap.set(ref.slice(prefix.length), oid);
-                }
-            }
-
-            refs = [...refsMap.entries()]
-                .map(([name, oid]) => ({ name, oid }))
-                .sort(compareRefNames);
-
-            listRefsCache.set(prefix, refs);
+            listRefsWithOidCache.set(prefix, cachedRefsWithOid);
         }
 
-        if (withOid) {
-            return refs.map((ref) => ({ ...ref }));
-        }
-
-        return refs.map((ref) => ref.name);
+        return cachedRefsWithOid.map((ref) => ({ ...ref }));
     };
 
-    const listBranches = (remote?: string | null, withOids = false) => {
-        return listRefs(gitdir, remote ? `refs/remotes/${remote}/` : 'refs/heads/', withOids);
-    };
-
-    const listTags = (withOids = false) => {
-        return listRefs(gitdir, 'refs/tags/', withOids);
-    };
+    const listRemoteBranches = (remote: string, withOids = false) =>
+        listRefs(`refs/remotes/${remote}/`, withOids);
+    const listBranches = (withOids = false) => listRefs('refs/heads/', withOids);
+    const listTags = (withOids = false) => listRefs('refs/tags/', withOids);
 
     return {
         resolveRef,
@@ -167,19 +109,21 @@ export async function createRefIndex(gitdir: string) {
         },
 
         listRemotes,
+        listRemoteBranches,
         listBranches,
         listTags,
 
         async stat() {
-            const remotes = [null, ...(await listRemotes())];
+            const remotes = listRemotes();
+            const branchesByRemote = await Promise.all(
+                remotes.map((remote) => listRemoteBranches(remote))
+            );
 
             return {
-                remotes: (await Promise.all(remotes.map((remote) => listBranches(remote)))).map(
-                    (branches, idx) => ({
-                        remote: remotes[idx],
-                        branches
-                    })
-                ),
+                remotes: remotes.map((remote, idx) => ({
+                    remote,
+                    branches: branchesByRemote[idx]
+                })),
                 branches: await listBranches(),
                 tags: await listTags()
             };
@@ -187,9 +131,133 @@ export async function createRefIndex(gitdir: string) {
     };
 }
 
-// https://stackoverflow.com/a/40355107/2168416
-function compareRefNames(a: Ref, b: Ref) {
-    return a.name < b.name ? -1 : 1;
+async function resolveRef(
+    ref: string,
+    resolvedRefs: Map<string, string | null>,
+    looseRefs: Map<string, LooseRefFile>
+): Promise<string> {
+    const resolvedRef = resolvedRefs.get(ref);
+
+    if (resolvedRef !== null) {
+        if (resolvedRef !== undefined) {
+            return resolvedRef;
+        }
+
+        const looseRef = looseRefs.get(ref);
+
+        if (looseRef !== undefined) {
+            if (looseRef.content === null) {
+                looseRef.content = (await fsPromises.readFile(looseRef.path, 'utf8')).trim();
+            }
+
+            let value = looseRef.content;
+
+            while (!isOid(value)) {
+                // Is it a ref pointer?
+                if (value.startsWith('ref: ')) {
+                    value = value.slice(5); // 'ref: '.length == 5
+                    continue;
+                }
+
+                // Sometimes an additional information is appended such as tags, branch names or comments
+                if (/\s/.test(value)) {
+                    value = value.split(/\s+/)[0];
+                    continue;
+                }
+
+                value = await resolveRef(value, resolvedRefs, looseRefs);
+                break;
+            }
+
+            resolvedRefs.set(ref, value);
+            return value;
+        }
+    }
+
+    resolvedRefs.set(ref, null);
+    throw new Error(`Reference "${ref}" can't be resolved into oid`);
+}
+
+async function createRefResolver(gitdir: string) {
+    const resolvedRefs = new Map<string, string | null>();
+    const refNames = new Set<string>();
+    const remotes = await readRemotes(gitdir);
+    const [packedRefs, looseRefs] = await Promise.all([
+        readPackedRefs(gitdir),
+        readLooseRefs(gitdir, remotes)
+    ]);
+
+    for (const ref of looseRefs.keys()) {
+        refNames.add(ref);
+    }
+
+    for (const ref of packedRefs.keys()) {
+        if (!ref.endsWith('^{}') && !refNames.has(ref)) {
+            const oid = packedRefs.get(ref);
+
+            if (oid !== undefined) {
+                resolvedRefs.set(ref, oid);
+            }
+
+            refNames.add(ref);
+        }
+    }
+
+    return {
+        remotes,
+        names: [...refNames].sort((a, b) => (a < b ? -1 : 1)),
+        exists: (ref: string) => refNames.has(ref),
+        resolve: (ref: string) => resolveRef(ref, resolvedRefs, looseRefs)
+    };
+}
+
+async function readRemotes(gitdir: string) {
+    const remotesDir = pathJoin(gitdir, 'refs', 'remotes');
+    const remotes = [];
+
+    if (existsSync(remotesDir)) {
+        const entries = await fsPromises.readdir(remotesDir, {
+            withFileTypes: true
+        });
+
+        for (const entry of entries) {
+            if (entry.isDirectory()) {
+                remotes.push(entry.name);
+            }
+        }
+    }
+
+    return remotes;
+}
+
+async function readLooseRefs(gitdir: string, remotes: string[]) {
+    const looseRefs = new Map<string, LooseRefFile>();
+    const include = [
+        pathJoin('refs', 'heads'),
+        pathJoin('refs', 'tags'),
+        ...remotes.map((remote) => pathJoin('refs', 'remotes', remote))
+    ].filter((path) => existsSync(pathJoin(gitdir, path)));
+
+    if (include.length) {
+        const files = await scanFs({
+            basedir: gitdir,
+            include
+        });
+
+        for (const { path } of files) {
+            looseRefs.set(path, { path: pathJoin(gitdir, path), content: null });
+        }
+    }
+
+    for (const ref of symbolicRefs) {
+        const filename = pathJoin(gitdir, ref);
+
+        if (existsSync(filename)) {
+            looseRefs.set(ref, { path: filename, content: null });
+        }
+    }
+
+    return looseRefs;
 }
 
 async function readPackedRefs(gitdir: string) {
