@@ -239,13 +239,13 @@ async function readLooseRefs(gitdir: string, remotes: string[]) {
     ].filter((path) => existsSync(pathJoin(gitdir, path)));
 
     if (include.length) {
-        const files = await scanFs({
+        const { files } = await scanFs({
             basedir: gitdir,
             include
         });
 
-        for (const { path } of files) {
-            looseRefs.set(path, { path: pathJoin(gitdir, path), content: null });
+        for (const { posixPath, path } of files) {
+            looseRefs.set(posixPath, { path: pathJoin(gitdir, path), content: null });
         }
     }
 

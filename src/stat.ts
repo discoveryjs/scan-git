@@ -18,11 +18,11 @@ export function createStatMethod({
     packedObjectIndex: Awaited<ReturnType<typeof createPackedObjectIndex>>;
 }) {
     return async function () {
-        const [refs, looseObjects, packedObjects, files] = await Promise.all([
+        const [refs, looseObjects, packedObjects, { files }] = await Promise.all([
             refIndex.stat(),
             looseObjectIndex.stat(),
             packedObjectIndex.stat(),
-            scanFs({ basedir: gitdir })
+            scanFs(gitdir)
         ]);
 
         const fileStats = await Promise.all(
@@ -52,7 +52,7 @@ export function createStatMethod({
                 packed: packedObjects
             },
             files: files
-                .map((file, idx) => ({ path: file.path, size: fileStats[idx].size }))
+                .map((file, idx) => ({ path: file.posixPath, size: fileStats[idx].size }))
                 .sort((a, b) => (a.path < b.path ? -1 : 1)) // all paths are unique, no need for 0
         };
     };
