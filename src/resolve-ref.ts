@@ -268,7 +268,7 @@ async function readPackedRefs(gitdir: string) {
         const packedRefsContent = await fsPromises.readFile(packedRefsFilename, 'utf8');
         let ref = null;
 
-        for (const line of packedRefsContent.trim().split('\n')) {
+        for (const line of packedRefsContent.trim().split(/\r\n?|\n/)) {
             if (line.startsWith('#')) {
                 continue;
             }
