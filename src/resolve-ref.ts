@@ -1,5 +1,5 @@
 import { promises as fsPromises, existsSync } from 'fs';
-import { join as pathJoin } from 'path';
+import { join as pathJoin, sep as pathSep } from 'path';
 import { scanFs } from '@discoveryjs/scan-fs';
 
 type Ref = { name: string; oid: string };
@@ -233,10 +233,10 @@ async function readRemotes(gitdir: string) {
 async function readLooseRefs(gitdir: string, remotes: string[]) {
     const looseRefs = new Map<string, LooseRefFile>();
     const include = [
-        pathJoin('refs', 'heads'),
-        pathJoin('refs', 'tags'),
-        ...remotes.map((remote) => pathJoin('refs', 'remotes', remote))
-    ].filter((path) => existsSync(pathJoin(gitdir, path)));
+        'refs/heads',
+        'refs/tags',
+        ...remotes.map((remote) => `refs/remotes/${remote}`)
+    ].filter((path) => existsSync(pathJoin(gitdir, path.replace(/\//g, pathSep))));
 
     if (include.length) {
         const { files } = await scanFs({
