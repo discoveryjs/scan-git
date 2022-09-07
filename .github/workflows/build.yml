@@ -37,10 +37,11 @@ jobs:
 
     unit-tests:
         name: Unit tests
-        runs-on: ubuntu-latest
+        runs-on: ${{ matrix.os }}
 
         strategy:
             matrix:
+                os: [ubuntu-latest, windows-latest]
                 # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
                 node_version:
                     - 16
