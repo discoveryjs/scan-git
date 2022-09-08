@@ -1,4 +1,4 @@
-import { relative as pathRelative } from 'path';
+import { join as pathJoin } from 'path';
 import { promises as fsPromises } from 'fs';
 import { inflateSync } from './fast-inflate.js';
 import {
@@ -12,40 +12,36 @@ import { binarySearchHash } from './utils/binary-search.js';
 import { createObjectsTypeStat, objectsStatFromTypes } from './utils/stat.js';
 
 type LooseObjectMap = Map<string, string>;
+type LooseObjectMapEntry = [oid: string, relpath: string];
 
 async function createLooseObjectMap(gitdir: string): Promise<LooseObjectMap> {
-    const looseObjectMap: LooseObjectMap = new Map();
-    const objectsPath = `${gitdir}/objects`;
+    const objectsPath = pathJoin(gitdir, 'objects');
     const looseDirs = (await fsPromises.readdir(objectsPath)).filter((p) =>
         /^[0-9a-f]{2}$/.test(p)
     );
 
     const objectDirs = await Promise.all(
-        looseDirs.map((p) =>
+        looseDirs.map((dir) =>
             fsPromises
-                .readdir(`${objectsPath}/${p}`)
-                .then((files) => files.map((f) => [p + f, `${objectsPath}/${p}/${f}`]))
+                .readdir(pathJoin(objectsPath, dir))
+                .then((files) =>
+                    files.map((file): LooseObjectMapEntry => [dir + file, `objects/${dir}/${file}`])
+                )
         )
     );
 
-    for (const dir of objectDirs) {
-        for (const [oid, filepath] of dir) {
-            looseObjectMap.set(oid, filepath);
-        }
-    }
-
-    return looseObjectMap;
+    return new Map(objectDirs.flat());
 }
 
-function indexLooseObjects(looseObjectMap: Map<string, string>) {
+function indexObjectNames(names: string[]) {
     const fanoutTable = new Array<[start: number, end: number]>(256);
-    const oidByHash = [...looseObjectMap.keys()].sort((a, b) => (a < b ? -1 : 1));
-    const names = Buffer.from(oidByHash.join(''), 'hex');
+    const sortedNames = [...names].sort(([a], [b]) => (a < b ? -1 : 1));
+    const binaryNames = Buffer.from(names.join(''), 'hex');
 
     for (let i = 0, offset = 0; i < 256; i++) {
         const prevOffset = offset;
 
-        while (offset < names.length && names[offset * 20] === i) {
+        while (offset < binaryNames.length && binaryNames[offset * 20] === i) {
             offset++;
         }
 
@@ -54,8 +50,8 @@ function indexLooseObjects(looseObjectMap: Map<string, string>) {
 
     return {
         fanoutTable,
-        names,
-        oidByHash
+        binaryNames,
+        names: sortedNames
     };
 }
 
@@ -84,26 +80,26 @@ function parseLooseObject(buffer: Buffer): InternalGitObjectContent {
 
 export async function createLooseObjectIndex(gitdir: string) {
     const looseObjectMap = await createLooseObjectMap(gitdir);
-    const { fanoutTable, names, oidByHash } = indexLooseObjects(looseObjectMap);
+    const { fanoutTable, binaryNames, names } = indexObjectNames([...looseObjectMap.keys()]);
 
     const getOidFromHash = (hash: Buffer) => {
         const [start, end] = fanoutTable[hash[0]];
-        const idx = start !== end ? binarySearchHash(names, hash, start, end - 1) : -1;
+        const idx = start !== end ? binarySearchHash(binaryNames, hash, start, end - 1) : -1;
 
         if (idx !== -1) {
-            return oidByHash[idx];
+            return names[idx];
         }
 
         return null;
     };
 
     const readObjectHeaderByOid = async (oid: string) => {
-        const filepath = looseObjectMap.get(oid);
+        const relpath = looseObjectMap.get(oid);
 
-        if (filepath !== undefined) {
+        if (relpath !== undefined) {
             let fh: fsPromises.FileHandle | null = null;
             try {
-                fh = await fsPromises.open(filepath);
+                fh = await fsPromises.open(pathJoin(gitdir, relpath));
 
                 const headerBuffer = Buffer.alloc(512);
                 await fh.read(headerBuffer, 0, 512, 0);
@@ -117,10 +113,10 @@ export async function createLooseObjectIndex(gitdir: string) {
         return null;
     };
     const readObjectByOid = async (oid: string) => {
-        const filepath = looseObjectMap.get(oid);
+        const relpath = looseObjectMap.get(oid);
 
-        if (filepath !== undefined) {
-            const deflated = await fsPromises.readFile(filepath);
+        if (relpath !== undefined) {
+            const deflated = await fsPromises.readFile(pathJoin(gitdir, relpath));
 
             return parseLooseObject(inflateSync(deflated));
         }
@@ -150,9 +146,9 @@ export async function createLooseObjectIndex(gitdir: string) {
             const files = [];
             const objectsByType: Record<PackedObjectType, ObjectsTypeStat> = Object.create(null);
 
-            for (const [oid, filename] of looseObjectMap) {
+            for (const [oid, relpath] of looseObjectMap) {
                 const [stat, objectHeader] = await Promise.all([
-                    fsPromises.stat(filename),
+                    fsPromises.stat(pathJoin(gitdir, relpath)),
                     readObjectHeaderByOid(oid)
                 ]);
 
@@ -167,7 +163,7 @@ export async function createLooseObjectIndex(gitdir: string) {
                 }
 
                 files.push({
-                    path: pathRelative(gitdir, filename),
+                    path: relpath,
                     size: stat.size,
                     object: {
                         oid,
