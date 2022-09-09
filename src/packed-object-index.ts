@@ -1,6 +1,7 @@
-import { join as pathJoin, relative as pathRelative } from 'path';
+import { join as pathJoin } from 'path';
 import { promises as fsPromises } from 'fs';
 import { PackContent, readPackFile } from './packed-pack.js';
+import { objectsStatFromTypes, sumObjectsStat } from './utils/stat.js';
 import {
     InternalGitObjectContent,
     InternalGitObjectHeader,
@@ -8,7 +9,8 @@ import {
     ObjectsTypeStat,
     NormalizedGitReaderOptions
 } from './types.js';
-import { objectsStatFromTypes, sumObjectsStat } from './utils/stat.js';
+
+const PACKDIR = 'objects/pack';
 
 /**
  * Creates an index object that provides information about git objects stored within pack files
@@ -51,34 +53,31 @@ export async function createPackedObjectIndex(
         return null;
     }
 
-    const packdir = pathJoin(gitdir, 'objects/pack');
-    const packdirFiles = await fsPromises.readdir(packdir);
-    const cruftPackFileNames =
+    const packdirFilenames = await fsPromises.readdir(pathJoin(gitdir, PACKDIR));
+    const cruftPackFilenames =
         cruftPacks !== 'include'
-            ? packdirFiles
+            ? packdirFilenames
                   .filter((filename) => filename.endsWith('.mtimes'))
                   .map((filename) => filename.replace(/\.mtimes/, '.pack'))
             : [];
 
-    const packFilenames = packdirFiles
-        .filter((filename) => {
-            if (!filename.endsWith('.pack')) {
-                return false;
-            }
+    const packFilenames = packdirFilenames.filter((filename) => {
+        if (!filename.endsWith('.pack')) {
+            return false;
+        }
 
-            if (cruftPacks === 'include') {
-                return true;
-            }
+        if (cruftPacks === 'include') {
+            return true;
+        }
 
-            return cruftPacks === 'only'
-                ? cruftPackFileNames.includes(filename)
-                : !cruftPackFileNames.includes(filename);
-        })
-        .map((filename) => `${packdir}/${filename}`);
+        return cruftPacks === 'only'
+            ? cruftPackFilenames.includes(filename)
+            : !cruftPackFilenames.includes(filename);
+    });
 
     const packFiles = await Promise.all(
         packFilenames.map((filename) =>
-            readPackFile(filename, readObjectHeaderByHash, readObjectByHash)
+            readPackFile(gitdir, `${PACKDIR}/${filename}`, readObjectHeaderByHash, readObjectByHash)
         )
     );
 
@@ -110,11 +109,11 @@ export async function createPackedObjectIndex(
                 }
 
                 files.push({
-                    path: pathRelative(gitdir, pack.filename),
+                    path: pack.filename,
                     size: pack.filesize,
                     objects: objectsStatFromTypes(packObjectsByType),
                     index: {
-                        path: pathRelative(gitdir, pack.index.filename),
+                        path: pack.index.filename,
                         size: pack.index.filesize,
                         namesBytes: pack.index.namesBytes,
                         offsetsBytes: pack.index.offsetsBytes,
@@ -122,7 +121,7 @@ export async function createPackedObjectIndex(
                     },
                     reverseIndex: pack.reverseIndex?.filename
                         ? {
-                              path: pathRelative(gitdir, pack.reverseIndex.filename),
+                              path: pack.reverseIndex.filename,
                               size: pack.reverseIndex.filesize
                           }
                         : null

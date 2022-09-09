@@ -1,4 +1,5 @@
-import { promises as fsPromises, statSync } from 'fs';
+import { promises as fsPromises } from 'fs';
+import { join as pathJoin } from 'path';
 import { inflateSync } from './fast-inflate.js';
 import { BufferCursor, readEncodedOffset, readVarIntLE } from './utils/buffer.js';
 import { PackIndex, readPackIdxFile } from './packed-idx.js';
@@ -66,10 +67,10 @@ export class PackContent {
     }
 
     cache: Map<number, InternalGitObjectContent>;
-    filesize: number;
 
     constructor(
         public filename: string,
+        public filesize: number,
         public size: number,
         private fh: fsPromises.FileHandle,
         public readObjectHeaderFromAllPacks: ReadObjectHeaderFromAllPacks,
@@ -78,7 +79,6 @@ export class PackContent {
         public reverseIndex: PackReverseIndex | null
     ) {
         this.cache = new Map();
-        this.filesize = statSync(filename).size;
     }
 
     getObjectOffset(hash: Buffer) {
@@ -224,8 +224,8 @@ export class PackContent {
         if (deltaRef !== null) {
             const delta =
                 typeof deltaRef === 'number'
-                    ? await this.readObjectFromFile(deltaRef)
-                    : await this.readObjectFromAllPacks(deltaRef);
+                    ? await this.readObjectFromFile(deltaRef, cache)
+                    : await this.readObjectFromAllPacks(deltaRef, cache);
 
             if (delta === null) {
                 throw new Error('Could not read delta object from packfile');
@@ -337,11 +337,14 @@ export class PackContent {
 }
 
 export async function readPackFile(
+    gitdir: string,
     packFilename: string,
     readObjectHeaderFromAllPacks: ReadObjectHeaderFromAllPacks,
     readObjectFromAllPacks: ReadObjectFromAllPacks
 ) {
-    const fh = await fsPromises.open(packFilename);
+    const fullPackFilename = pathJoin(gitdir, packFilename);
+    const packFilesize = (await fsPromises.stat(fullPackFilename)).size;
+    const fh = await fsPromises.open(fullPackFilename);
     const header = Buffer.allocUnsafe(12);
 
     await fh.read(header, 0, 12, 0);
@@ -349,18 +352,19 @@ export async function readPackFile(
     // 4-byte signature: The signature is: {'P', 'A', 'C', 'K'}
     // 4-byte version number (network byte order):
     //   Git currently accepts version number 2 or 3 but generates version 2 only.
-    checkFileHeader(packFilename, header, Buffer.from('PACK'), 2);
+    checkFileHeader(fullPackFilename, header, Buffer.from('PACK'), 2);
 
     // 4-byte number of objects contained in the pack (network byte order)
     const size = header.readUint32BE(8);
 
     // Prepare indexes
-    const index = await readPackIdxFile(packFilename);
-    const reverseIndex = await readPackRevFile(packFilename, index);
+    const index = await readPackIdxFile(gitdir, packFilename);
+    const reverseIndex = await readPackRevFile(gitdir, packFilename, index);
 
     // Combine all together
     return new PackContent(
         packFilename,
+        packFilesize,
         size,
         fh,
         readObjectHeaderFromAllPacks,

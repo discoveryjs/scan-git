@@ -1,4 +1,5 @@
 import { promises as fsPromises } from 'fs';
+import { join as pathJoin } from 'path';
 import { binarySearchHash } from './utils/binary-search.js';
 import { checkFileHeader } from './utils/file.js';
 
@@ -55,15 +56,16 @@ export class PackIndex {
     }
 }
 
-export async function readPackIdxFile(packFilename: string) {
+export async function readPackIdxFile(gitdir: string, packFilename: string) {
     const idxFilename = packFilename.replace(/\.pack$/, '.idx');
+    const fullIdxFilename = pathJoin(gitdir, idxFilename);
     let fh: fsPromises.FileHandle | null = null;
     let readOffset = 0;
 
     try {
-        const idxFilesize = (await fsPromises.stat(idxFilename)).size;
+        const idxFilesize = (await fsPromises.stat(fullIdxFilename)).size;
 
-        fh = await fsPromises.open(idxFilename);
+        fh = await fsPromises.open(fullIdxFilename);
 
         // https://git-scm.com/docs/pack-format#_version_2_pack_idx_files_support_packs_larger_than_4_gib_and
         // Version 2 pack-*.idx files format:
@@ -76,7 +78,7 @@ export async function readPackIdxFile(packFilename: string) {
         readOffset += header.byteLength;
 
         // Check magic number for IDX v2 (\377tOc)
-        checkFileHeader(idxFilename, header, Buffer.from('\xfftOc', 'latin1'), 2); // \377 === \xff
+        checkFileHeader(fullIdxFilename, header, Buffer.from('\xfftOc', 'latin1'), 2); // \377 === \xff
 
         // Build fanout table as a range [startIndex, endIndex]
         const fanoutTable = new Array<[number, number]>(256);
