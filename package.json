@@ -1,6 +1,6 @@
 {
     "name": "@discoveryjs/scan-git",
-    "version": "0.0.0",
+    "version": "0.1.0",
     "description": "A tool set for fast and efficient git scanning to capture data with focus on large repos",
     "repository": "discoveryjs/scan-git",
     "author": "Roman Dvornov <rdvornov@gmail.com>",
@@ -8,6 +8,8 @@
     "keywords": [
         "git",
         "scan",
+        "branch",
+        "tag",
         "files",
         "commits",
         "delta"
@@ -60,6 +62,6 @@
         "build:transpile": "node scripts/transpile.cjs",
         "coverage": "c8 --exclude lib-test --reporter=lcovonly npm run test:esm",
         "watch": "npm run build:transpile -- --watch --types",
-        "prepublishOnly": "npm run lint && npm run ts-emit-types && npm run build && npm run test"
+        "prepublishOnly": "npm run lint && rm -rf lib/** && npm run ts-emit-types && npm run build && npm run test"
     }
 }

@@ -27,15 +27,11 @@ await repo.dispose();
 #### createGitReader(gitdir, options?)
 
 - `gitdir`: string - path to the git repo
-- `options.cruftPacks`: CruftPackMode (default: `'include'`) - controls the inclusion of cruft packs in packed objects procession.
-
-#### CruftPackMode
-
-Defines how cruft packs are processed by git reader. Check [git docs](https://git-scm.com/docs/cruft-packs) to learn more about cruft packs.
-
-- `'include'` - processes all packs (alias `true`)
-- `'exclude'` - excludes cruft packs from processing (alias `false`)
-- `'only'` - processes cruft packs only
+- `options` – optional settings:
+  - `cruftPacks` – defines how [cruft packs](https://git-scm.com/docs/cruft-packs) are processed:
+    - `'include'` or `true` (default) - process all packs
+    - `'exclude'` or `false` - exclude cruft packs from processing
+    - `'only'` - process cruft packs only
 
 ### Refs
 
