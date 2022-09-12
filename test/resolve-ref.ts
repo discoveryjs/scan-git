@@ -13,6 +13,27 @@ describe('resolve-ref', () => {
     before(async () => (repo = await fixtures.base.repo()));
     after(() => repo.dispose().then(() => (repo = null)));
 
+    describe('defaultBranch()', () => {
+        const defaultBranches = {
+            base: 'main',
+            cruft: 'main',
+            'no-remotes': 'main',
+            upstream: 'fork-main',
+            clean: 'development' // FIXME
+        };
+
+        for (const [repoName, expected] of Object.entries(defaultBranches)) {
+            (repoName === 'clean' ? it.skip : it)(repoName, async () => {
+                const repo = await fixtures[repoName].repo();
+                const actual = await repo.defaultBranch();
+
+                assert.strictEqual(actual, expected);
+
+                return repo.dispose();
+            });
+        }
+    });
+
     describe('listBranches()', () => {
         it('local branches', async () => {
             const actual = await repo.listBranches();
@@ -59,7 +80,9 @@ describe('resolve-ref', () => {
 
             assert.deepStrictEqual(actual, expected);
         });
+    });
 
+    describe('listRemoteBranches()', () => {
         it('remote branches', async () => {
             const actual = await repo.listRemoteBranches('origin');
             const expected = [

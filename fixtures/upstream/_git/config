@@ -1,0 +1,16 @@
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = false
+	logallrefupdates = true
+	ignorecase = true
+	precomposeunicode = true
+[remote "origin"]
+	url = https://github.com/lahmatiy/scan-git
+	fetch = +refs/heads/*:refs/remotes/origin/*
+[branch "fork-main"]
+	remote = origin
+	merge = refs/heads/fork-main
+[remote "upstream"]
+	url = https://github.com/discoveryjs/scan-git
+	fetch = +refs/heads/*:refs/remotes/upstream/*

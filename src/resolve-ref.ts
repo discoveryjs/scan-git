@@ -1,5 +1,5 @@
 import { promises as fsPromises, existsSync } from 'fs';
-import { join as pathJoin, sep as pathSep } from 'path';
+import { join as pathJoin, basename, sep as pathSep } from 'path';
 import { scanFs } from '@discoveryjs/scan-fs';
 
 type Ref = { name: string; oid: string };
@@ -98,6 +98,12 @@ export async function createRefIndex(gitdir: string) {
         listRefs(`refs/remotes/${remote}/`, withOids);
     const listBranches = (withOids = false) => listRefs('refs/heads/', withOids);
     const listTags = (withOids = false) => listRefs('refs/tags/', withOids);
+    const readRefContent = async (ref: string) =>
+        basename(
+            (await fsPromises.readFile(pathJoin(gitdir, ref), 'utf8'))
+                .trim()
+                .replace(/^ref:\s*/, '')
+        );
 
     return {
         resolveRef,
@@ -112,6 +118,29 @@ export async function createRefIndex(gitdir: string) {
         listRemoteBranches,
         listBranches,
         listTags,
+
+        // inspired by https://usethis.r-lib.org/reference/git-default-branch.html
+        async defaultBranch() {
+            const branches = (await listBranches()) as string[]; // FIXME: remove string[]
+
+            if (branches.length === 1) {
+                return basename(branches[0]);
+            }
+
+            const branchRef =
+                expandRef('refs/remotes/upstream/HEAD') ||
+                expandRef('refs/remotes/origin/HEAD') ||
+                expandRef('refs/heads/main') ||
+                expandRef('refs/heads/master');
+
+            if (branchRef) {
+                return branchRef.endsWith('/HEAD')
+                    ? readRefContent(branchRef)
+                    : basename(branchRef);
+            }
+
+            return null;
+        },
 
         async stat() {
             const remotes = listRemotes();

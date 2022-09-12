@@ -44,6 +44,24 @@ Common parameters:
 - `ref`: string – a reference to an object in repository
 - `withOid`: boolean – a flag to include resolved oid for a reference
 
+#### repo.defaultBranch()
+
+Returns default branch name used in a repo:
+
+```js
+const defaultBranch = await repo.defaultBranch();
+// 'main'
+```
+
+The algorithm to identify a default branch name:
+
+- if there is only one branch, that must be the default
+- otherwise looking for specific branch names, in this order:
+  - `upstream/HEAD`
+  - `origin/HEAD`
+  - `main`
+  - `master`
+
 #### repo.expandRef(ref)
 
 Expands a `ref` into a full form, e.g. `'main'` -> `'refs/heads/main'`.
