@@ -30,13 +30,12 @@ async function createLooseObjectMap(gitdir: string): Promise<LooseObjectMap> {
         )
     );
 
-    return new Map(objectDirs.flat());
+    return new Map(objectDirs.flat().sort(([a], [b]) => (a < b ? -1 : 1)));
 }
 
-function indexObjectNames(names: string[]) {
+function indexObjectNames(sortedNames: string[]) {
     const fanoutTable = new Array<[start: number, end: number]>(256);
-    const sortedNames = [...names].sort(([a], [b]) => (a < b ? -1 : 1));
-    const binaryNames = Buffer.from(names.join(''), 'hex');
+    const binaryNames = Buffer.from(sortedNames.join(''), 'hex');
 
     for (let i = 0, offset = 0; i < 256; i++) {
         const prevOffset = offset;

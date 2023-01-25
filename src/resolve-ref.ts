@@ -256,7 +256,7 @@ async function readRemotes(gitdir: string) {
         }
     }
 
-    return remotes;
+    return remotes.sort();
 }
 
 async function readLooseRefs(gitdir: string, remotes: string[]) {
