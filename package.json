@@ -48,7 +48,7 @@
         "prettier": "^2.6.2",
         "rollup": "^2.71.1",
         "sucrase": "^3.21.0",
-        "typescript": "^4.7.2"
+        "typescript": "^4.8.3"
     },
     "scripts": {
         "check": "npm run lint && npm run ts-check",
