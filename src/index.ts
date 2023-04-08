@@ -2,7 +2,7 @@ import { createReadObject } from './read-object.js';
 import { createRefIndex } from './resolve-ref.js';
 import { createLooseObjectIndex } from './loose-object-index.js';
 import { createPackedObjectIndex } from './packed-object-index.js';
-import { createFilesMethods } from './files-list.js';
+import { createFilesMethods } from './files-methods.js';
 import { createCommitMethods } from './commits.js';
 import { createStatMethod } from './stat.js';
 import { GitReaderOptions, NormalizedGitReaderOptions, CruftPackMode } from './types';

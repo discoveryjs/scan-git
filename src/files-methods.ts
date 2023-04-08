@@ -1,14 +1,7 @@
 import { ReadObjectByHash, ReadObjectByOid, ResolveRef, Tree, TreeEntry } from './types';
 import { EMPTY_TREE_OID } from './const.js';
-import {
-    ADDED,
-    REMOVED,
-    MODIFIED,
-    diffTrees,
-    parseAnnotatedTag,
-    parseCommit,
-    parseTree
-} from './parse-object.js';
+import { parseAnnotatedTag, parseCommit, parseTree } from './parse-object.js';
+import { ADDED, REMOVED, MODIFIED, diffTrees, findTreeEntry } from './tree-utils.js';
 
 type ReadTree = (hash: Buffer) => Promise<Tree>;
 type FileEntry = { path: string; hash: string };
@@ -168,9 +161,38 @@ export function createFilesMethods(
 
         return tree;
     }
+    async function getPathEntry(path: string, ref = 'HEAD'): Promise<TreeEntry | null> {
+        const treeOid = await treeOidFromRef(ref);
+        const pathSegments = path.split('/');
+        let treeHash = Buffer.from(treeOid, 'hex');
+
+        for (let i = 0; i < pathSegments.length; i++) {
+            const segment = pathSegments[i];
+            const { object: treeObject } = await readObjectByHash(treeHash);
+            const entry = findTreeEntry(treeObject, segment);
+
+            if (entry === null) {
+                break;
+            }
+
+            if (i === pathSegments.length - 1) {
+                entry.path = path;
+                return entry;
+            }
+
+            if (!entry.isTree) {
+                break;
+            }
+
+            treeHash = entry.hash;
+        }
+
+        return null;
+    }
 
     return {
         treeOidFromRef,
+        getPathEntry,
 
         async listFiles<T extends boolean = false, R = T extends true ? FileEntry : string>(
             ref = 'HEAD',

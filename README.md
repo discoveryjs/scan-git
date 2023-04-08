@@ -150,9 +150,22 @@ const tags = await repo.listTags(true);
 // ]
 ```
 
-### File lists
+## File lists
+
+#### repo.treeOidFromRef(ref)
+
+Resolve a tree oid by a commit reference.
+
+- `ref`: string (default: `'HEAD'`) – commit reference
+
+```js
+const treeOid = await repo.treeOidFromRef('HEAD');
+// 'a1b2c3d4e5f6...'
+```
 
 #### repo.listFiles(ref, filesWithHash)
+
+List all files in the repository at the specified commit reference.
 
 - `ref`: string (default: `'HEAD'`) – commit reference
 - `filesWithHash`: boolean (default: `false`) – specify to return blob's hashes
@@ -165,7 +178,33 @@ const headFilesWithHashes = repo.listFiles('HEAD', true);
 // [ { path: 'file.ext', hash: 'f2e492a3049...' }, ... ]
 ```
 
+#### repo.getPathEntry(path, ref)
+
+Retrieve a tree entry (file or directory) by its path at the specified commit reference.
+
+- `path`: string - the path to the file or directory
+- `ref`: string (default: `'HEAD'`) - commit reference
+
+```js
+const entry = await repo.getPathEntry('path/to/existing/file.txt');
+// { isTree: false, path: 'path/to/existing/file.txt', hash: 'a1b2c3d4e5f6...' }
+```
+
 #### repo.deltaFiles(nextRef, prevRef)
+
+Compute the file delta (changes) between two commit references, including added, modified, and removed files.
+
+- `nextRef`: string (default: `'HEAD'`) - commit reference for the "next" state
+- `prevRef`: string (optional) - commit reference for the "previous" state
+
+```js
+const fileDelta = await repo.deltaFiles('HEAD', 'branch-name');
+// {
+//   add: [ { path: 'path/to/new/file.txt', hash: 'a1b2c3d4e5f6...' }, ... ],
+//   modify: [ { path: 'path/to/modified/file.txt', hash: 'f1e2d3c4b5a6...', prevHash: 'a1b2c3d4e5f6...' }, ... ],
+//   remove: [ { path: 'path/to/removed/file.txt', hash: 'a1b2c3d4e5f6...' }, ... ]
+// }
+```
 
 ### Commits
 

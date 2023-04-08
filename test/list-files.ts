@@ -84,4 +84,64 @@ describe('list files', () => {
             assert.deepStrictEqual(actual, expectedHeadCommitDelta);
         });
     });
+
+    describe('getPathEntry', () => {
+        it('should return the correct TreeEntry for an existing file', async () => {
+            const entry = await repo.getPathEntry('src/index.ts');
+
+            assert.deepStrictEqual(entry, {
+                isTree: false,
+                path: 'src/index.ts',
+                hash: Buffer.from('4ec5f4d51a1194290adf08917fe4d320432b67e1', 'hex')
+            });
+        });
+
+        it('should return the correct TreeEntry for an existing file for a specified ref', async () => {
+            const entry = await repo.getPathEntry(
+                'src/index.ts',
+                '900fced62c7d0bb8f68d5109d9c5fc9303c6a7ae'
+            );
+
+            assert.deepStrictEqual(entry, {
+                isTree: false,
+                path: 'src/index.ts',
+                hash: Buffer.from('2dff36d07c5da36098f066b07dc8f72a925da88c', 'hex')
+            });
+        });
+
+        it('should return the correct TreeEntry for an existing directory', async () => {
+            const entry = await repo.getPathEntry('src');
+
+            assert.deepStrictEqual(entry, {
+                isTree: true,
+                path: 'src',
+                hash: Buffer.from('3f6fc011a10e9d4b65248128126a5f1d11294760', 'hex')
+            });
+        });
+
+        it('should return the correct TreeEntry for an existing directory for a specified ref', async () => {
+            const entry = await repo.getPathEntry(
+                'src',
+                '5a6c856773e30660623ed1398944fcb29b6371d8'
+            );
+
+            assert.deepStrictEqual(entry, {
+                isTree: true,
+                path: 'src',
+                hash: Buffer.from('7cb15d51c15e67253ed70a9e464db86977635d63', 'hex')
+            });
+        });
+
+        it('should return null for a non-existing file or directory', async () => {
+            const entry = await repo.getPathEntry('non-exists');
+
+            assert.strictEqual(entry, null);
+        });
+
+        it('should return null when the path points to a file inside a non-existing directory', async () => {
+            const entry = await repo.getPathEntry('src/non-exists.ts');
+
+            assert.strictEqual(entry, null);
+        });
+    });
 });
