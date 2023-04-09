@@ -20,6 +20,7 @@ type FileDelta = {
     remove: FileDeltaEntry[];
 };
 type Path = { path: string; segments: string[] };
+type FilenameEntry<T extends boolean> = T extends true ? FileEntry : string;
 
 async function collectTreeFiles(
     hash: Buffer,
@@ -264,18 +265,15 @@ export function createFilesMethods(
         getPathEntry,
         getPathsEntries,
 
-        async listFiles<T extends boolean = false, R = T extends true ? FileEntry : string>(
-            ref = 'HEAD',
-            filesWithHash: T
-        ) {
+        async listFiles<T extends boolean = false>(ref = 'HEAD', filesWithHash?: T) {
             const treeOid = await treeOidFromRef(ref);
-            const filenames: R[] = [];
+            const filenames: FilenameEntry<T>[] = [];
 
             await collectTreeFiles(
                 Buffer.from(treeOid, 'hex'),
                 readTree,
                 '',
-                filenames as any, // FIXME
+                filenames,
                 filesWithHash
             );
 
