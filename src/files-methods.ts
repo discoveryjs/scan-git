@@ -1,7 +1,14 @@
 import { ReadObjectByHash, ReadObjectByOid, ResolveRef, Tree, TreeEntry } from './types';
 import { EMPTY_TREE_OID } from './const.js';
 import { parseAnnotatedTag, parseCommit, parseTree } from './parse-object.js';
-import { ADDED, REMOVED, MODIFIED, diffTrees, findTreeEntry } from './tree-utils.js';
+import {
+    ADDED,
+    REMOVED,
+    MODIFIED,
+    diffTrees,
+    findTreeEntry,
+    findTreeEntries
+} from './tree-utils.js';
 
 type ReadTree = (hash: Buffer) => Promise<Tree>;
 type FileEntry = { path: string; hash: string };
@@ -12,6 +19,7 @@ type FileDelta = {
     modify: (FileDeltaEntry & { prevHash: string })[];
     remove: FileDeltaEntry[];
 };
+type Path = { path: string; segments: string[] };
 
 async function collectTreeFiles(
     hash: Buffer,
@@ -64,7 +72,7 @@ function addSubtreeToDelta(
 async function collectFilesDelta(
     prevHash: Buffer,
     nextHash: Buffer,
-    readObjectByHash: any,
+    readObjectByHash: ReadObjectByHash,
     readTree: ReadTree,
     prefix: string,
     delta: FileDelta
@@ -116,6 +124,50 @@ async function collectFilesDelta(
                     });
                 }
                 break;
+        }
+    }
+}
+
+async function collectTreeEntries(
+    result: TreeEntry[],
+    pathsInfo: Path[],
+    readObjectByHash: ReadObjectByHash,
+    treeHash: Buffer,
+    level: number
+): Promise<void> {
+    // Group segments with the same first segment
+    const groups = new Map<string, Path[]>();
+    for (const pathInfo of pathsInfo) {
+        const key = pathInfo.segments[level];
+        const group = groups.get(key);
+
+        if (group === undefined) {
+            groups.set(key, [pathInfo]);
+        } else {
+            group.push(pathInfo);
+        }
+    }
+
+    // Find tree entries for the groups
+    const { object: treeObject } = await readObjectByHash(treeHash);
+    const groupPaths = Array.from(groups.keys());
+    const foundEntries = findTreeEntries(treeObject, groupPaths);
+
+    for (const entry of foundEntries) {
+        const group = groups.get(entry.path) as Path[];
+        const subtreePaths: Path[] = [];
+
+        for (const pathInfo of group) {
+            if (pathInfo.segments.length === level + 1) {
+                entry.path = pathInfo.path;
+                result.push(entry);
+            } else if (entry.isTree) {
+                subtreePaths.push(pathInfo);
+            }
+        }
+
+        if (subtreePaths.length > 0) {
+            await collectTreeEntries(result, subtreePaths, readObjectByHash, entry.hash, level + 1);
         }
     }
 }
@@ -190,9 +242,27 @@ export function createFilesMethods(
         return null;
     }
 
+    async function getPathsEntries(paths: string[], ref = 'HEAD'): Promise<TreeEntry[]> {
+        const treeOid = await treeOidFromRef(ref);
+        const entries: TreeEntry[] = [];
+        const treeHash = Buffer.from(treeOid, 'hex');
+
+        // Sort paths and split them into segments
+        const sortedPaths = [...paths].sort();
+        const pathSegments = sortedPaths.map((path) => ({
+            path,
+            segments: path.split('/')
+        }));
+
+        await collectTreeEntries(entries, pathSegments, readObjectByHash, treeHash, 0);
+
+        return entries;
+    }
+
     return {
         treeOidFromRef,
         getPathEntry,
+        getPathsEntries,
 
         async listFiles<T extends boolean = false, R = T extends true ? FileEntry : string>(
             ref = 'HEAD',

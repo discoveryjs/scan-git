@@ -144,4 +144,89 @@ describe('list files', () => {
             assert.strictEqual(entry, null);
         });
     });
+
+    describe('getPathsEntries', () => {
+        it('should return an empty array when provided with an empty list of paths', async () => {
+            const result = await repo.getPathsEntries([]);
+
+            assert.deepStrictEqual(result, []);
+        });
+
+        it('should return correct TreeEntry objects for a list of paths', async () => {
+            const paths = ['package.json', 'src', 'src/parse-object.ts'];
+            const expected = [
+                {
+                    path: 'package.json',
+                    isTree: false,
+                    hash: Buffer.from('1b7e89928cc35da51e7d2f36e70774c4bdffa60c', 'hex')
+                },
+                {
+                    path: 'src',
+                    isTree: true,
+                    hash: Buffer.from('3f6fc011a10e9d4b65248128126a5f1d11294760', 'hex')
+                },
+                {
+                    path: 'src/parse-object.ts',
+                    isTree: false,
+                    hash: Buffer.from('c2ee6cb69105a4c3a11ce406e1fe57daabff7065', 'hex')
+                }
+            ];
+            const result = await repo.getPathsEntries(paths);
+
+            assert.deepStrictEqual(result, expected);
+        });
+
+        it('should return an empty array for non-existent paths', async () => {
+            const paths = ['nonexistent1', 'nonexistent2'];
+            const result = await repo.getPathsEntries(paths);
+
+            assert.deepStrictEqual(result, []);
+        });
+
+        it('should return TreeEntry objects for existing paths and ignore non-existent paths', async () => {
+            const paths = ['package.json', 'src', 'nonexistent'];
+            const expected = [
+                {
+                    path: 'package.json',
+                    isTree: false,
+                    hash: Buffer.from('1b7e89928cc35da51e7d2f36e70774c4bdffa60c', 'hex')
+                },
+                {
+                    path: 'src',
+                    isTree: true,
+                    hash: Buffer.from('3f6fc011a10e9d4b65248128126a5f1d11294760', 'hex')
+                }
+            ];
+            const result = await repo.getPathsEntries(paths);
+
+            assert.deepStrictEqual(result, expected);
+        });
+
+        it('should work with a custom ref', async () => {
+            const paths = ['package.json', 'src', 'src/parse-object.ts'];
+            const expected = [
+                {
+                    path: 'package.json',
+                    isTree: false,
+                    hash: Buffer.from('1b7e89928cc35da51e7d2f36e70774c4bdffa60c', 'hex')
+                },
+                {
+                    path: 'src',
+                    isTree: true,
+                    hash: Buffer.from('7cb15d51c15e67253ed70a9e464db86977635d63', 'hex')
+                },
+                {
+                    path: 'src/parse-object.ts',
+                    isTree: false,
+                    hash: Buffer.from('013a4ca653f33860e445ae270778004fe2cf5885', 'hex')
+                }
+            ];
+            const result = await repo.getPathsEntries(
+                paths,
+                '7c2a62cdbc2ef28afaaed3b6f3aef9b581e5aa8e'
+            );
+
+            assert.deepStrictEqual(result, expected);
+        });
+    });
 });

@@ -16,10 +16,41 @@ export function findTreeEntry(buffer: Buffer, path: string): TreeEntry | null {
             };
         }
 
+        if (path < entryPath) {
+            break;
+        }
+
         offset = nullchar + 21;
     }
 
     return null;
+}
+
+export function findTreeEntries(buffer: Buffer, paths: string[]): TreeEntry[] {
+    const entries: TreeEntry[] = [];
+    let offset = 0;
+    let pathIndex = 0;
+
+    while (offset < buffer.length && pathIndex < paths.length) {
+        const space = buffer.indexOf(32, offset + 5);
+        const nullchar = buffer.indexOf(0, space + 1);
+        const path = buffer.toString('utf8', space + 1, nullchar);
+
+        while (pathIndex < paths.length && paths[pathIndex] <= path) {
+            if (path === paths[pathIndex]) {
+                entries.push({
+                    isTree: buffer[offset] === 52, // '4'.charCodeAt() === 52
+                    path,
+                    hash: buffer.slice(nullchar + 1, nullchar + 21)
+                });
+            }
+            pathIndex++;
+        }
+
+        offset = nullchar + 21;
+    }
+
+    return entries;
 }
 
 export const ADDED = 1;
@@ -95,7 +126,7 @@ export function diffTrees(prev: Buffer, next: Buffer) {
             for (let k = 1; k <= 20; k++) {
                 if (prev[prevIdx + k] !== next[nextIdx + k]) {
                     // different oids
-                    // TODO: implement a really rare case when prev.isTree !== next.isTree
+                    // TODO: implement a realy rare case when prev.isTree !== next.isTree
                     diff.push({
                         type: MODIFIED,
                         isTree: next[nextStart] === 52, // '4'.charCodeAt() === 52

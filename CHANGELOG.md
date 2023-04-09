@@ -1,3 +1,8 @@
+## next
+
+- Added `getPathEntry()` method
+- Added `getPathsEntries()` method
+
 ## 0.1.1 (2023-01-25)
 
 - Fixed methods for reading loose objects (`readObjectHeaderByOid`, `readObjectHeaderByHash`, `readObjectByOid`

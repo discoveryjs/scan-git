@@ -186,8 +186,28 @@ Retrieve a tree entry (file or directory) by its path at the specified commit re
 - `ref`: string (default: `'HEAD'`) - commit reference
 
 ```js
-const entry = await repo.getPathEntry('path/to/existing/file.txt');
-// { isTree: false, path: 'path/to/existing/file.txt', hash: 'a1b2c3d4e5f6...' }
+const entry = await repo.getPathEntry('path/to/file.txt');
+// { isTree: false, path: 'path/to/file.txt', hash: 'a1b2c3d4e5f6...' }
+```
+
+#### repo.getPathsEntries(paths, ref)
+
+Retrieve a list of tree entries (files or directories) by their paths at the specified commit reference.
+
+- `paths`: string[] - an array of paths to files or directories
+- `ref`: string (default: `'HEAD'`) - commit reference
+
+```js
+const entries = await repo.getPathsEntries([
+  'path/to/file1.txt',
+  'path/to/dir1',
+  'path/to/file2.txt'
+]);
+// [
+//   { isTree: false, path: 'path/to/file1.txt', hash: 'a1b2c3d4e5f6...' },
+//   { isTree: true, path: 'path/to/dir1', hash: 'b1c2d3e4f5g6...' },
+//   { isTree: false, path: 'path/to/file2.txt', hash: 'c1d2e3f4g5h6...' }
+// ]
 ```
 
 #### repo.deltaFiles(nextRef, prevRef)
