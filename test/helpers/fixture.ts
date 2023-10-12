@@ -3,7 +3,7 @@ import { fileURLToPath } from 'url';
 import { createGitReader, GitReaderOptions } from '@discoveryjs/scan-git';
 
 const fixturesPath = '../../fixtures/';
-const fixtureNames = ['base', 'cruft', 'no-remotes', 'upstream', 'clean'];
+const fixtureNames = ['base', 'cruft', 'no-remotes', 'upstream', 'clean', 'rev-index'];
 
 export const fixtures = Object.create(null);
 

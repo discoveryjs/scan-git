@@ -1,0 +1,6 @@
+0000000000000000000000000000000000000000 7b84f676f2fbea2a3c6d83924fa63059c7bdfbe2 Roman Dvornov <rdvornov@gmail.com> 1658250965 +0200	clone: from /scan-git/
+7b84f676f2fbea2a3c6d83924fa63059c7bdfbe2 572e2700548838e6f84b06131954faca4c8c63f3 Roman Dvornov <rdvornov@gmail.com> 1658251295 +0200	checkout: moving from main to HEAD~5
+572e2700548838e6f84b06131954faca4c8c63f3 572e2700548838e6f84b06131954faca4c8c63f3 Roman Dvornov <rdvornov@gmail.com> 1658251363 +0200	checkout: moving from 572e2700548838e6f84b06131954faca4c8c63f3 to test
+572e2700548838e6f84b06131954faca4c8c63f3 2dbee47a8d4f8d39e1168fad951b703ee05614d6 Roman Dvornov <rdvornov@gmail.com> 1658251433 +0200	commit: Test commit
+2dbee47a8d4f8d39e1168fad951b703ee05614d6 7c2a62cdbc2ef28afaaed3b6f3aef9b581e5aa8e Roman Dvornov <rdvornov@gmail.com> 1658251451 +0200	checkout: moving from test to HEAD~3
+7c2a62cdbc2ef28afaaed3b6f3aef9b581e5aa8e 2dbee47a8d4f8d39e1168fad951b703ee05614d6 Roman Dvornov <rdvornov@gmail.com> 1658251656 +0200	checkout: moving from 7c2a62cdbc2ef28afaaed3b6f3aef9b581e5aa8e to test

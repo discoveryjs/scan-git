@@ -2,6 +2,7 @@
 
 - Added `getPathEntry()` method
 - Added `getPathsEntries()` method
+- Fixed reading on-disk reverse index (`.rev` files)
 
 ## 0.1.1 (2023-01-25)
 

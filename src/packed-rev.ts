@@ -40,14 +40,19 @@ export class PackReverseIndex {
     }
 }
 
-export async function readPackRevFile(gitdir: string, packFilename: string, packIndex: PackIndex) {
+export async function readPackRevFile(
+    gitdir: string,
+    packFilename: string,
+    packFilesize: number,
+    packIndex: PackIndex
+) {
     const revFilename = packFilename.replace(/\.pack$/, '.rev');
     const fullRevFilename = pathJoin(gitdir, revFilename);
     let fh: fsPromises.FileHandle | null = null;
 
     if (existsSync(fullRevFilename)) {
         try {
-            const packSize = (await fsPromises.stat(packFilename)).size - 20; // 20bytes for trailer
+            const packSize = packFilesize - 20; // 20bytes for trailer
 
             // https://git-scm.com/docs/pack-format#_pack_rev_files_have_the_format
             fh = await fsPromises.open(fullRevFilename);
@@ -64,7 +69,11 @@ export async function readPackRevFile(gitdir: string, packFilename: string, pack
             // do nothing for now
 
             // Skip header and store as reverseIndex
-            const reverseIndex = new Uint32Array(buffer.slice(12).buffer);
+            const reverseIndex = new Uint32Array(
+                buffer.buffer,
+                buffer.byteOffset + 12,
+                buffer.byteLength - 12
+            );
 
             // swap numbers to avoid using readUInt32BE() and less math with indexes
             buffer.swap32();

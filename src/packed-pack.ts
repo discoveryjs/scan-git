@@ -367,7 +367,7 @@ export async function readPackFile(
 
     // Prepare indexes
     const index = await readPackIdxFile(gitdir, packFilename);
-    const reverseIndex = await readPackRevFile(gitdir, packFilename, index);
+    const reverseIndex = await readPackRevFile(gitdir, packFilename, packFilesize, index);
 
     // Combine all together
     return new PackContent(

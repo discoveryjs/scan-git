@@ -12,52 +12,63 @@ describe('stat', () => {
             return repo.dispose();
         });
 
-        it('counts objects in cruft packs', async () => {
-            const repo = await fixtures.cruft.repo({ cruftPacks: 'only' });
-            const stat = await repo.stat();
+        it('with rev-index', async () => {
+            const repo = await fixtures['rev-index'].repo();
+            const actual = await repo.stat();
 
-            assert.deepStrictEqual(
-                stat.objects.packed.objects.count,
-                fixtures.cruft.data.cruftObjects
-            );
+            assert.deepStrictEqual(actual, fixtures['rev-index'].data.stat);
 
             return repo.dispose();
         });
 
-        it('counts objects in regular packs only', async () => {
-            const repo = await fixtures.cruft.repo({ cruftPacks: 'exclude' });
-            const stat = await repo.stat();
+        describe('with cruft pack', () => {
+            it('counts objects in cruft packs', async () => {
+                const repo = await fixtures.cruft.repo({ cruftPacks: 'only' });
+                const stat = await repo.stat();
 
-            assert.deepStrictEqual(
-                stat.objects.packed.objects.count,
-                fixtures.cruft.data.packedObjects
-            );
+                assert.deepStrictEqual(
+                    stat.objects.packed.objects.count,
+                    fixtures.cruft.data.cruftObjects
+                );
 
-            return repo.dispose();
-        });
+                return repo.dispose();
+            });
 
-        it('counts all packed objects', async () => {
-            const repo = await fixtures.cruft.repo({ cruftPacks: 'include' });
-            const stat = await repo.stat();
+            it('counts objects in regular packs only', async () => {
+                const repo = await fixtures.cruft.repo({ cruftPacks: 'exclude' });
+                const stat = await repo.stat();
 
-            assert.deepStrictEqual(
-                stat.objects.packed.objects.count,
-                fixtures.cruft.data.totalPackedObjects
-            );
+                assert.deepStrictEqual(
+                    stat.objects.packed.objects.count,
+                    fixtures.cruft.data.packedObjects
+                );
 
-            return repo.dispose();
-        });
+                return repo.dispose();
+            });
 
-        it('counts all packed objects, when cruftPacks option is not specified', async () => {
-            const repo = await fixtures.cruft.repo();
-            const stat = await repo.stat();
+            it('counts all packed objects', async () => {
+                const repo = await fixtures.cruft.repo({ cruftPacks: 'include' });
+                const stat = await repo.stat();
 
-            assert.deepStrictEqual(
-                stat.objects.packed.objects.count,
-                fixtures.cruft.data.totalPackedObjects
-            );
+                assert.deepStrictEqual(
+                    stat.objects.packed.objects.count,
+                    fixtures.cruft.data.totalPackedObjects
+                );
 
-            return repo.dispose();
+                return repo.dispose();
+            });
+
+            it('counts all packed objects, when cruftPacks option is not specified', async () => {
+                const repo = await fixtures.cruft.repo();
+                const stat = await repo.stat();
+
+                assert.deepStrictEqual(
+                    stat.objects.packed.objects.count,
+                    fixtures.cruft.data.totalPackedObjects
+                );
+
+                return repo.dispose();
+            });
         });
     });
 });
