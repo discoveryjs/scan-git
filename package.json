@@ -1,6 +1,6 @@
 {
     "name": "@discoveryjs/scan-git",
-    "version": "0.1.2",
+    "version": "0.1.3",
     "description": "A tool set for fast and efficient git scanning to capture data with focus on large repos",
     "repository": "discoveryjs/scan-git",
     "author": "Roman Dvornov <rdvornov@gmail.com>",

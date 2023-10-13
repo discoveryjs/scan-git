@@ -1,4 +1,4 @@
-## next
+## 0.1.3 (2023-10-13)
 
 - Fixed size computation of on-disk reverse index (`.rev` files)
 
