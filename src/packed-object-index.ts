@@ -135,7 +135,7 @@ export async function createPackedObjectIndex(
                             ({
                                 type,
                                 ...sumObjectsStat(stat)
-                            } as ObjectsTypeStat)
+                            }) as ObjectsTypeStat
                     )
                 ),
                 files

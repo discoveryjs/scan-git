@@ -114,7 +114,7 @@ async function transpile({
         format,
         exports: 'auto',
         preserveModules: true,
-        interop: false,
+        interop: 'auto',
         esModule: format === 'esm',
         generatedCode: {
             constBindings: true
