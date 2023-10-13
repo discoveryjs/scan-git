@@ -1,5 +1,9 @@
 ## next
 
+- Fixed size computation of on-disk reverse index (`.rev` files)
+
+## 0.1.2 (2023-10-12)
+
 - Added `getPathEntry()` method
 - Added `getPathsEntries()` method
 - Fixed reading on-disk reverse index (`.rev` files)

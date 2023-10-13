@@ -20,7 +20,10 @@ export class PackReverseIndex {
         private index: PackIndex,
         private reverseIndex: Uint32Array
     ) {
-        this.filesize = this.filename !== null ? reverseIndex.byteLength + 12 + 20 : 0;
+        this.filesize =
+            this.filename !== null
+                ? reverseIndex.byteLength + 12 + 20 + 20 // + header + checksum of the corresponding packfile + checksum of the index file
+                : 0;
     }
 
     indexByOffsetToIndexByName(index: number) {
@@ -52,7 +55,7 @@ export async function readPackRevFile(
 
     if (existsSync(fullRevFilename)) {
         try {
-            const packSize = packFilesize - 20; // 20bytes for trailer
+            const packSize = packFilesize - 20; // 20bytes for trailer (checksum)
 
             // https://git-scm.com/docs/pack-format#_pack_rev_files_have_the_format
             fh = await fsPromises.open(fullRevFilename);
@@ -72,7 +75,7 @@ export async function readPackRevFile(
             const reverseIndex = new Uint32Array(
                 buffer.buffer,
                 buffer.byteOffset + 12,
-                buffer.byteLength - 12
+                packIndex.size
             );
 
             // swap numbers to avoid using readUInt32BE() and less math with indexes
