@@ -1,5 +1,5 @@
 import assert from 'assert';
-import { fixtures } from './helpers/fixture.js';
+import { fixtures, nullRepo } from './helpers/fixture.js';
 import { validRefs } from './fixtures/valid-refs.js';
 import { invalidRefs } from './fixtures/invalid-refs.js';
 import {
@@ -9,9 +9,9 @@ import {
 } from './fixtures/ambiguous-refs.js';
 
 describe('resolve-ref', () => {
-    let repo;
+    let repo = nullRepo;
     before(async () => (repo = await fixtures.base.repo()));
-    after(() => repo.dispose().then(() => (repo = null)));
+    after(() => repo?.dispose().then(() => (repo = nullRepo)));
 
     describe('defaultBranch()', () => {
         const defaultBranches = {

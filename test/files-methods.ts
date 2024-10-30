@@ -1,10 +1,10 @@
 import assert from 'assert';
-import { fixtures } from './helpers/fixture.js';
+import { fixtures, nullRepo } from './helpers/fixture.js';
 
 describe('list files', () => {
-    let repo;
+    let repo = nullRepo;
     before(async () => (repo = await fixtures.base.repo()));
-    after(() => repo.dispose().then(() => (repo = null)));
+    after(() => repo.dispose().then(() => (repo = nullRepo)));
 
     const { data } = fixtures.base;
     const headCommit = data.commits[0];
@@ -69,13 +69,17 @@ describe('list files', () => {
         it('for tree ref', async () => {
             const actual = await repo.deltaFiles(preHeadCommit.tree);
 
-            actual.add = actual.add.map((entry) => entry.path);
-
-            assert.deepStrictEqual(actual, {
-                add: expectedPreHeadCommitFiles,
-                modify: [],
-                remove: []
-            });
+            assert.deepStrictEqual(
+                {
+                    ...actual,
+                    add: actual.add.map((entry) => entry.path)
+                },
+                {
+                    add: expectedPreHeadCommitFiles,
+                    modify: [],
+                    remove: []
+                }
+            );
         });
 
         it('for tree pair', async () => {

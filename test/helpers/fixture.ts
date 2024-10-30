@@ -2,10 +2,17 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { createGitReader, GitReaderOptions } from '@discoveryjs/scan-git';
 
+type Repo = Awaited<ReturnType<LazyFixture['repo']>>;
+type LazyFixture = {
+    repo: (options?: GitReaderOptions) => ReturnType<typeof createGitReader>;
+    data: any;
+};
+
 const fixturesPath = '../../fixtures/';
 const fixtureNames = ['base', 'cruft', 'no-remotes', 'upstream', 'clean', 'rev-index'];
 
-export const fixtures = Object.create(null);
+export const nullRepo: Repo = null as unknown as Repo;
+export const fixtures: Record<string, LazyFixture> = Object.create(null);
 
 for (const name of fixtureNames) {
     fixtures[name] = {

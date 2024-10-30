@@ -1,10 +1,10 @@
 import assert from 'assert';
-import { fixtures } from './helpers/fixture.js';
+import { fixtures, nullRepo } from './helpers/fixture.js';
 
 describe('read-object', () => {
-    let repo;
+    let repo = nullRepo;
     before(async () => (repo = await fixtures.base.repo()));
-    after(() => repo.dispose().then(() => (repo = null)));
+    after(() => repo.dispose().then(() => (repo = nullRepo)));
 
     describe('readObjectByOid', () => {
         it('readObjectByOid()', async () => {
