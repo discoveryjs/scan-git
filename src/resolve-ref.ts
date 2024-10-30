@@ -164,6 +164,7 @@ export async function createRefIndex(gitdir: string) {
         );
 
     return {
+        isOid,
         isRefExists: (ref: string) => expandRef(ref) !== null,
         resolveRef,
         expandRef: (ref: string) => (isOid(ref) ? ref : expandRef(ref)),

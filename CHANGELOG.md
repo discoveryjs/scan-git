@@ -1,6 +1,7 @@
 ## next
 
 - Added `repo.describeRef(ref)` method, which returns an information object about the reference
+- Added `repo.isOid(value)` method to check if a value is an object ID
 
 ## 0.1.3 (2023-10-13)
 

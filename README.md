@@ -130,6 +130,14 @@ const info = repo.describeRef('origin/HEAD');
 //   oid: '7b84f676f2fbea2a3c6d83924fa63059c7bdfbe2'
 // }
 ```
+
+#### repo.isOid(value)
+
+Checks if a `value` is a valid oid.
+
+```js
+repo.isOid('7b84f676f2fbea2a3c6d83924fa63059c7bdfbe2'); // true
+repo.isOid('main'); // false
 ```
 
 #### repo.listRemotes()

@@ -373,4 +373,24 @@ describe('resolve-ref', () => {
             });
         });
     });
+
+    describe('isOid()', () => {
+        it('should return true for a valid OID (40-character hexadecimal string)', function () {
+            assert.strictEqual(repo.isOid('1234567890abcdef1234567890abcdef12345678'), true);
+        });
+
+        const badValues = [
+            '1234567890abcdef1234567890abcdef1234',
+            '1234567890abcdef1234567890abcdef12345678901234',
+            '1234567890abcdef1234567890abcdef1234567G',
+            1234567895678901,
+            ''
+        ];
+
+        for (const value of badValues) {
+            it(JSON.stringify(value), () => {
+                assert.strictEqual(repo.isOid('1234567890abcdef1234567890abcdef1234567G'), false);
+            });
+        }
+    });
 });
