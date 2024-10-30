@@ -2,8 +2,36 @@ import { promises as fsPromises, existsSync } from 'fs';
 import { join as pathJoin, basename, sep as pathSep } from 'path';
 import { scanFs } from '@discoveryjs/scan-fs';
 
-type Ref = { name: string; oid: string };
-type LooseRefFile = { path: string; content: string | null };
+type Ref = {
+    name: string;
+    oid: string;
+};
+type RefSourceInfo = {
+    ref: string | null;
+    oid: string | null;
+};
+type LooseRefFile = {
+    path: string;
+    content: string | null;
+};
+type RefResolver = {
+    remotes: string[];
+    names: string[];
+    exists(ref: string): boolean;
+    resolveOid(ref: string): Promise<string>;
+    resolve(ref: string): Promise<RefSourceInfo>;
+};
+type RefInfo = {
+    path: string;
+    name: string;
+    symbolic: boolean;
+    scope: string;
+    namespace: string;
+    category: string;
+    remote: string | null;
+    ref: string | null;
+    oid: string | null;
+};
 
 // NOTICE: Don't forget to update README.md when change the values
 const symbolicRefs = new Set(['HEAD', 'FETCH_HEAD', 'CHERRY_PICK_HEAD', 'MERGE_HEAD', 'ORIG_HEAD']);
@@ -18,7 +46,7 @@ const refpaths = (ref: string) => [
 ];
 
 function isOid(value: unknown) {
-    return typeof value === 'string' && value.length === 40 && /[0-9a-f]{40}/.test(value);
+    return typeof value === 'string' && value.length === 40 && /^[0-9a-f]{40}$/.test(value);
 }
 
 export async function createRefIndex(gitdir: string) {
@@ -40,19 +68,49 @@ export async function createRefIndex(gitdir: string) {
         // Nothing found
         return null;
     };
-    const resolveRef = async (ref: string) => {
+    const resolveRef = async (ref: string): Promise<string> => {
         // Is it a complete and valid SHA?
         if (isOid(ref)) {
             return ref;
         }
 
-        const expandedRef = await expandRef(ref);
+        const expandedRef = expandRef(ref);
 
         if (expandedRef === null) {
             throw new Error(`Reference "${ref}" is not found`);
         }
 
-        return refResolver.resolve(expandedRef);
+        return refResolver.resolveOid(expandedRef);
+    };
+    const describeRef = async (ref: string): Promise<RefInfo> => {
+        const expandedRef = expandRef(ref);
+
+        if (expandedRef === null) {
+            throw new Error(`Reference "${ref}" is not found`);
+        }
+
+        const refInfo = await refResolver.resolve(expandedRef);
+
+        const [, scope, path] = expandedRef.match(/^([^/]+\/[^/]+)\/(.+)$/) || [
+            '',
+            'refs/heads',
+            expandedRef
+        ];
+        const [namespace, category] = scope.split('/');
+        const remoteMatch = scope === 'refs/remotes' ? path.match(/^([^/]+)\/(.+)$/) : null;
+        const [remote = null, name] = remoteMatch ? remoteMatch.slice(1) : [null, path];
+
+        return {
+            path: expandedRef,
+            name,
+            symbolic: symbolicRefs.has(name),
+            scope,
+            namespace,
+            category,
+            remote,
+            ref: refInfo.ref,
+            oid: refInfo.oid
+        } satisfies RefInfo;
     };
 
     const listRemotes = () => refResolver.remotes.slice();
@@ -79,14 +137,14 @@ export async function createRefIndex(gitdir: string) {
         let cachedRefsWithOid = listRefsWithOidCache.get(prefix);
 
         if (cachedRefsWithOid === undefined) {
-            cachedRefsWithOid = [];
+            const oids = await Promise.all(
+                cachedRefs.map((name) => refResolver.resolveOid(prefix + name))
+            );
 
-            for (const name of cachedRefs) {
-                cachedRefsWithOid.push({
-                    name,
-                    oid: await refResolver.resolve(prefix + name)
-                });
-            }
+            cachedRefsWithOid = cachedRefs.map((name, index) => ({
+                name,
+                oid: oids[index]
+            }));
 
             listRefsWithOidCache.set(prefix, cachedRefsWithOid);
         }
@@ -106,13 +164,10 @@ export async function createRefIndex(gitdir: string) {
         );
 
     return {
+        isRefExists: (ref: string) => expandRef(ref) !== null,
         resolveRef,
-        expandRef(ref: string) {
-            return isOid(ref) ? ref : expandRef(ref);
-        },
-        async isRefExists(ref: string) {
-            return (await expandRef(ref)) !== null;
-        },
+        expandRef: (ref: string) => (isOid(ref) ? ref : expandRef(ref)),
+        describeRef,
 
         listRemotes,
         listRemoteBranches,
@@ -162,16 +217,12 @@ export async function createRefIndex(gitdir: string) {
 
 async function resolveRef(
     ref: string,
-    resolvedRefs: Map<string, string | null>,
+    resolvedRefs: Map<string, RefSourceInfo>,
     looseRefs: Map<string, LooseRefFile>
-): Promise<string> {
-    const resolvedRef = resolvedRefs.get(ref);
+): Promise<RefSourceInfo> {
+    let resolvedRef = resolvedRefs.get(ref);
 
-    if (resolvedRef !== null) {
-        if (resolvedRef !== undefined) {
-            return resolvedRef;
-        }
-
+    if (resolvedRef === undefined) {
         const looseRef = looseRefs.get(ref);
 
         if (looseRef !== undefined) {
@@ -179,36 +230,49 @@ async function resolveRef(
                 looseRef.content = (await fsPromises.readFile(looseRef.path, 'utf8')).trim();
             }
 
-            let value = looseRef.content;
+            let refValue = looseRef.content;
 
-            while (!isOid(value)) {
+            while (!isOid(refValue)) {
                 // Is it a ref pointer?
-                if (value.startsWith('ref: ')) {
-                    value = value.slice(5); // 'ref: '.length == 5
+                if (refValue.startsWith('ref: ')) {
+                    refValue = refValue.replace(/^ref:\s+/, '');
                     continue;
                 }
 
                 // Sometimes an additional information is appended such as tags, branch names or comments
-                if (/\s/.test(value)) {
-                    value = value.split(/\s+/)[0];
+                const spaceIndex = refValue.search(/\s/);
+                if (spaceIndex !== -1) {
+                    refValue = refValue.slice(0, spaceIndex);
                     continue;
                 }
 
-                value = await resolveRef(value, resolvedRefs, looseRefs);
                 break;
             }
 
-            resolvedRefs.set(ref, value);
-            return value;
+            const oid = isOid(refValue)
+                ? refValue
+                : (await resolveRef(refValue, resolvedRefs, looseRefs)).oid;
+
+            resolvedRef = {
+                ref: refValue !== oid ? refValue : null,
+                oid
+            };
+        } else {
+            resolvedRef = { ref: null, oid: null };
         }
+
+        resolvedRefs.set(ref, resolvedRef);
     }
 
-    resolvedRefs.set(ref, null);
+    if (resolvedRef.oid !== null) {
+        return resolvedRef;
+    }
+
     throw new Error(`Reference "${ref}" can't be resolved into oid`);
 }
 
 async function createRefResolver(gitdir: string) {
-    const resolvedRefs = new Map<string, string | null>();
+    const resolvedRefs = new Map<string, RefSourceInfo>();
     const refNames = new Set<string>();
     const remotes = await readRemotes(gitdir);
     const [packedRefs, looseRefs] = await Promise.all([
@@ -225,7 +289,7 @@ async function createRefResolver(gitdir: string) {
             const oid = packedRefs.get(ref);
 
             if (oid !== undefined) {
-                resolvedRefs.set(ref, oid);
+                resolvedRefs.set(ref, { ref: null, oid });
             }
 
             refNames.add(ref);
@@ -236,8 +300,10 @@ async function createRefResolver(gitdir: string) {
         remotes,
         names: [...refNames].sort((a, b) => (a < b ? -1 : 1)),
         exists: (ref: string) => refNames.has(ref),
+        resolveOid: async (ref: string) =>
+            (await resolveRef(ref, resolvedRefs, looseRefs)).oid as string,
         resolve: (ref: string) => resolveRef(ref, resolvedRefs, looseRefs)
-    };
+    } satisfies RefResolver;
 }
 
 async function readRemotes(gitdir: string) {

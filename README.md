@@ -21,7 +21,6 @@ const commits = await repo.log({ ref: 'my-branch', depth: 10 });
 console.log(commits);
 
 await repo.dispose();
-});
 ```
 
 #### createGitReader(gitdir, options?)
@@ -58,6 +57,15 @@ The algorithm to identify a default branch name:
   - `main`
   - `master`
 
+#### repo.isRefExists(ref)
+
+Checks if a `ref` exists.
+
+```js
+const isValidRef = repo.isRefExists('main');
+// true
+```
+
 #### repo.expandRef(ref)
 
 Expands a `ref` into a full form, e.g. `'main'` -> `'refs/heads/main'`.
@@ -78,13 +86,50 @@ const oid = repo.resolveRef('main');
 // '8bb6e23769902199e39ab70f2441841712cbdd62'
 ```
 
-#### repo.isRefExists(ref)
+#### repo.describeRef(ref)
 
-Checks if a `ref` exists.
+Returns an info object for provided `ref`.
 
 ```js
-const isValidRef = repo.isRefExists('main');
-// true
+const info = repo.describeRef('HEAD');
+// {
+//   path: 'HEAD',
+//   name: 'HEAD',
+//   symbolic: true,
+//   ref: 'refs/heads/test',
+//   oid: '2dbee47a8d4f8d39e1168fad951b703ee05614d6'
+// }
+```
+
+```js
+const info = repo.describeRef('main');
+// {
+//   path: 'refs/heads/main',
+//   name: 'main',
+//   symbolic: false,
+//   scope: 'refs/heads',
+//   namespace: 'refs',
+//   category: 'heads',
+//   remote: null,
+//   ref: null,
+//   oid: '7b84f676f2fbea2a3c6d83924fa63059c7bdfbe2'
+// }
+```
+
+```js
+const info = repo.describeRef('origin/HEAD');
+// {
+//   path: 'refs/remotes/origin/HEAD',
+//   name: 'HEAD',
+//   symbolic: false,
+//   scope: 'refs/remotes',
+//   namespace: 'refs',
+//   category: 'remotes',
+//   remote: 'origin',
+//   ref: 'refs/remotes/origin/main',
+//   oid: '7b84f676f2fbea2a3c6d83924fa63059c7bdfbe2'
+// }
+```
 ```
 
 #### repo.listRemotes()

@@ -301,4 +301,76 @@ describe('resolve-ref', () => {
             assert.strictEqual(actual, false);
         });
     });
+
+    describe('describeRef()', () => {
+        it('non-exists reference', () =>
+            assert.rejects(
+                () => repo.describeRef('non-exists'),
+                /Reference "non-exists" is not found/
+            ));
+
+        it('symbolic', async () => {
+            const actual = await repo.describeRef('HEAD');
+
+            assert.deepStrictEqual(actual, {
+                path: 'HEAD',
+                name: 'HEAD',
+                symbolic: true,
+                scope: 'refs/heads',
+                namespace: 'refs',
+                category: 'heads',
+                remote: null,
+                ref: 'refs/heads/test',
+                oid: '2dbee47a8d4f8d39e1168fad951b703ee05614d6'
+            });
+        });
+
+        it('remotes symbolic', async () => {
+            const actual = await repo.describeRef('origin/HEAD');
+
+            assert.deepStrictEqual(actual, {
+                path: 'refs/remotes/origin/HEAD',
+                name: 'HEAD',
+                symbolic: true,
+                scope: 'refs/remotes',
+                namespace: 'refs',
+                category: 'remotes',
+                remote: 'origin',
+                ref: 'refs/remotes/origin/main',
+                oid: '7b84f676f2fbea2a3c6d83924fa63059c7bdfbe2'
+            });
+        });
+
+        it('branch ref', async () => {
+            const actual = await repo.describeRef('main');
+
+            assert.deepStrictEqual(actual, {
+                path: 'refs/heads/main',
+                name: 'main',
+                symbolic: false,
+                scope: 'refs/heads',
+                namespace: 'refs',
+                category: 'heads',
+                remote: null,
+                ref: null,
+                oid: '7b84f676f2fbea2a3c6d83924fa63059c7bdfbe2'
+            });
+        });
+
+        it('tag ref', async () => {
+            const actual = await repo.describeRef('refs/tags/test-tag');
+
+            assert.deepStrictEqual(actual, {
+                path: 'refs/tags/test-tag',
+                name: 'test-tag',
+                symbolic: false,
+                scope: 'refs/tags',
+                namespace: 'refs',
+                category: 'tags',
+                remote: null,
+                ref: null,
+                oid: '2dbee47a8d4f8d39e1168fad951b703ee05614d6'
+            });
+        });
+    });
 });
