@@ -9,7 +9,7 @@ type LazyFixture = {
 };
 
 const fixturesPath = '../../fixtures/';
-const fixtureNames = ['base', 'cruft', 'no-remotes', 'upstream', 'clean', 'rev-index'];
+const fixtureNames = ['base', 'detached', 'cruft', 'no-remotes', 'upstream', 'clean', 'rev-index'];
 
 export const nullRepo: Repo = null as unknown as Repo;
 export const fixtures: Record<string, LazyFixture> = Object.create(null);
@@ -33,11 +33,17 @@ for (const name of fixtureNames) {
                 fs.promises.readdir = origReaddir;
             }
         },
-        data: JSON.parse(
-            fs.readFileSync(
-                fileURLToPath(new URL(fixturesPath + name + '/data.json', import.meta.url)),
-                'utf8'
-            )
-        )
+        get data() {
+            const value = JSON.parse(
+                fs.readFileSync(
+                    fileURLToPath(new URL(fixturesPath + name + '/data.json', import.meta.url)),
+                    'utf8'
+                )
+            );
+
+            Object.defineProperty(this, 'data', { value });
+
+            return value;
+        }
     };
 }
