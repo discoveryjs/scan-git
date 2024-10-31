@@ -57,6 +57,19 @@ The algorithm to identify a default branch name:
   - `main`
   - `master`
 
+#### repo.currentBranch()
+
+Returns the current branch name along with its commit oid.
+If the repository is in a detached HEAD state, `name` will be `null`.
+
+```js
+const currentBranch = repo.currentBranch();
+// { name: 'main', oid: '8bb6e23769902199e39ab70f2441841712cbdd62' }
+
+const detachedHead = repo.currentBranch();
+// { name: null, oid: '8bb6e23769902199e39ab70f2441841712cbdd62' }
+```
+
 #### repo.isRefExists(ref)
 
 Checks if a `ref` exists.

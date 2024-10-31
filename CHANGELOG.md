@@ -1,5 +1,6 @@
 ## next
 
+- Added `repo.currentBranch()` method
 - Added `repo.describeRef(ref)` method, which returns an information object about the reference
 - Added `repo.isOid(value)` method to check if a value is an object ID
 

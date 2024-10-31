@@ -90,7 +90,6 @@ export async function createRefIndex(gitdir: string) {
         }
 
         const refInfo = await refResolver.resolve(expandedRef);
-
         const [, scope, path] = expandedRef.match(/^([^/]+\/[^/]+)\/(.+)$/) || [
             '',
             'refs/heads',
@@ -163,6 +162,37 @@ export async function createRefIndex(gitdir: string) {
                 .replace(/^ref:\s*/, '')
         );
 
+    const currentBranch = async function () {
+        const { ref, oid } = await describeRef('HEAD');
+        const name = ref ? (await describeRef(ref)).name : null;
+
+        return {
+            name,
+            oid
+        };
+    };
+
+    // inspired by https://usethis.r-lib.org/reference/git-default-branch.html
+    const defaultBranch = async function () {
+        const branches = (await listBranches()) as string[]; // FIXME: remove string[]
+
+        if (branches.length <= 1) {
+            return basename(branches[0]);
+        }
+
+        const branchRef =
+            expandRef('refs/remotes/upstream/HEAD') ||
+            expandRef('refs/remotes/origin/HEAD') ||
+            expandRef('refs/heads/main') ||
+            expandRef('refs/heads/master');
+
+        if (branchRef) {
+            return branchRef.endsWith('/HEAD') ? readRefContent(branchRef) : basename(branchRef);
+        }
+
+        return null;
+    };
+
     return {
         isOid,
         isRefExists: (ref: string) => expandRef(ref) !== null,
@@ -175,28 +205,8 @@ export async function createRefIndex(gitdir: string) {
         listBranches,
         listTags,
 
-        // inspired by https://usethis.r-lib.org/reference/git-default-branch.html
-        async defaultBranch() {
-            const branches = (await listBranches()) as string[]; // FIXME: remove string[]
-
-            if (branches.length === 1) {
-                return basename(branches[0]);
-            }
-
-            const branchRef =
-                expandRef('refs/remotes/upstream/HEAD') ||
-                expandRef('refs/remotes/origin/HEAD') ||
-                expandRef('refs/heads/main') ||
-                expandRef('refs/heads/master');
-
-            if (branchRef) {
-                return branchRef.endsWith('/HEAD')
-                    ? readRefContent(branchRef)
-                    : basename(branchRef);
-            }
-
-            return null;
-        },
+        defaultBranch,
+        currentBranch,
 
         async stat() {
             const remotes = listRemotes();

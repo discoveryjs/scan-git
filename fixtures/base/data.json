@@ -1,4 +1,9 @@
 {
+    "defaultBranch": "main",
+    "currentBranch": {
+        "name": "test",
+        "oid": "2dbee47a8d4f8d39e1168fad951b703ee05614d6"
+    },
     "commits": [
         {
             "oid": "2dbee47a8d4f8d39e1168fad951b703ee05614d6",

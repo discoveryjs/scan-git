@@ -16,10 +16,11 @@ describe('resolve-ref', () => {
     describe('defaultBranch()', () => {
         const defaultBranches = {
             base: 'main',
+            detached: 'main',
             cruft: 'main',
             'no-remotes': 'main',
             upstream: 'fork-main',
-            clean: 'development' // FIXME
+            clean: 'empty-branch' // FIXME
         };
 
         for (const [repoName, expected] of Object.entries(defaultBranches)) {
@@ -28,6 +29,28 @@ describe('resolve-ref', () => {
                 const actual = await repo.defaultBranch();
 
                 assert.strictEqual(actual, expected);
+
+                return repo.dispose();
+            });
+        }
+    });
+
+    describe('currentBranch()', () => {
+        const defaultBranches = {
+            base: { name: 'test', oid: '2dbee47a8d4f8d39e1168fad951b703ee05614d6' },
+            detached: { name: null, oid: '2dbee47a8d4f8d39e1168fad951b703ee05614d6' },
+            cruft: { name: 'main', oid: '7b84f676f2fbea2a3c6d83924fa63059c7bdfbe2' },
+            'no-remotes': { name: 'main', oid: '293e1ffaf7158c249fc654aec07eca555a25de09' },
+            upstream: { name: 'fork-main', oid: '293e1ffaf7158c249fc654aec07eca555a25de09' },
+            clean: { name: 'empty-branch', oid: null } // FIXME
+        };
+
+        for (const [repoName, expected] of Object.entries(defaultBranches)) {
+            (repoName === 'clean' ? it.skip : it)(repoName, async () => {
+                const repo = await fixtures[repoName].repo();
+                const actual = await repo.currentBranch();
+
+                assert.deepStrictEqual(actual, expected);
 
                 return repo.dispose();
             });
