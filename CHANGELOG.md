@@ -1,4 +1,4 @@
-## next
+## 0.1.4 (2024-10-30)
 
 - Added `repo.currentBranch()` method
 - Added `repo.describeRef(ref)` method, which returns an information object about the reference
