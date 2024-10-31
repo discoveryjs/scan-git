@@ -1,3 +1,4 @@
+import { isGitDir, resolveGitDir } from './gitdir.js';
 import { createReadObject } from './read-object.js';
 import { createRefIndex } from './resolve-ref.js';
 import { createLooseObjectIndex } from './loose-object-index.js';
@@ -9,21 +10,23 @@ import { GitReaderOptions, NormalizedGitReaderOptions, CruftPackMode } from './t
 
 export * from './types.js';
 export * from './parse-object.js';
+export { isGitDir, resolveGitDir };
 
 export async function createGitReader(gitdir: string, options?: GitReaderOptions) {
     const startInitTime = Date.now();
     const normalizedOptions = normalizeOptions(options);
+    const resolvedGitDir = await resolveGitDir(gitdir);
     const [refIndex, looseObjectIndex, packedObjectIndex] = await Promise.all([
-        createRefIndex(gitdir),
-        createLooseObjectIndex(gitdir),
-        createPackedObjectIndex(gitdir, normalizedOptions)
+        createRefIndex(resolvedGitDir),
+        createLooseObjectIndex(resolvedGitDir),
+        createPackedObjectIndex(resolvedGitDir, normalizedOptions)
     ]);
     const { readObjectHeaderByHash, readObjectByHash, readObjectHeaderByOid, readObjectByOid } =
         createReadObject(looseObjectIndex, packedObjectIndex);
 
     return {
         get gitdir() {
-            return gitdir;
+            return resolvedGitDir;
         },
         readObjectHeaderByHash,
         readObjectByHash,
@@ -35,7 +38,12 @@ export async function createGitReader(gitdir: string, options?: GitReaderOptions
         async dispose() {
             await Promise.all([looseObjectIndex.dispose(), packedObjectIndex.dispose()]);
         },
-        stat: createStatMethod({ gitdir, refIndex, looseObjectIndex, packedObjectIndex }),
+        stat: createStatMethod({
+            gitdir: resolvedGitDir,
+            refIndex,
+            looseObjectIndex,
+            packedObjectIndex
+        }),
 
         initTime: Date.now() - startInitTime
     };

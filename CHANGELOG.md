@@ -3,6 +3,8 @@
 - Added `repo.currentBranch()` method
 - Added `repo.describeRef(ref)` method, which returns an information object about the reference
 - Added `repo.isOid(value)` method to check if a value is an object ID
+- Added `isGitDir()` and `resolveGitDir()` helper functions
+- Enhanced `createGitReader()` to automatically attempt adding the `.git` folder to the provided `gitdir` path, making explicit inclusion of `.git` optional
 
 ## 0.1.3 (2023-10-13)
 
