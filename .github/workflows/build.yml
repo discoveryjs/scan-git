@@ -63,19 +63,12 @@ jobs:
     coverage:
         name: Collect test coverage
         runs-on: ubuntu-latest
-
-        strategy:
-            matrix:
-                # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
-                node_version:
-                    - ${{ env.PRIMARY_NODEJS_VERSION }}
-
         steps:
             - uses: actions/checkout@v2
-            - name: Setup node ${{ matrix.node_version }}
+            - name: Setup node ${{ env.PRIMARY_NODEJS_VERSION }}
               uses: actions/setup-node@v2
               with:
-                  node-version: ${{ matrix.node_version }}
+                  node-version: ${{ env.PRIMARY_NODEJS_VERSION }}
                   cache: 'npm'
             - run: npm ci
             - run: npm run build:transpile
