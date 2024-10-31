@@ -33,7 +33,7 @@
         "node": ">=16.0.0"
     },
     "dependencies": {
-        "@discoveryjs/scan-fs": "^4.0.0-rc.1"
+        "@discoveryjs/scan-fs": "^4.0.0"
     },
     "devDependencies": {
         "@types/mocha": "^10.0.2",
