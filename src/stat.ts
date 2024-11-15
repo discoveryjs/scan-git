@@ -2,6 +2,7 @@ import { promises as fsPromises } from 'fs';
 import * as path from 'path';
 import { scanFs } from '@discoveryjs/scan-fs';
 import { sumObjectsStat } from './utils/stat.js';
+import { promiseAllThreaded } from './utils/threads.js';
 import { createRefIndex } from './resolve-ref.js';
 import { createLooseObjectIndex } from './loose-object-index.js';
 import { createPackedObjectIndex } from './packed-object-index.js';
@@ -25,8 +26,8 @@ export function createStatMethod({
             scanFs(gitdir)
         ]);
 
-        const fileStats = await Promise.all(
-            files.map((file) => fsPromises.stat(path.join(gitdir, file.path)))
+        const fileStats = await promiseAllThreaded(20, files, (file) =>
+            fsPromises.stat(path.join(gitdir, file.path))
         );
 
         const objectsTypes = looseObjects.objects.types.map((entry) => ({ ...entry }));

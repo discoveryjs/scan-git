@@ -1,5 +1,6 @@
 import { promises as fsPromises, existsSync } from 'fs';
 import { join as pathJoin, basename, sep as pathSep } from 'path';
+import { promiseAllThreaded } from './utils/threads.js';
 import { scanFs } from '@discoveryjs/scan-fs';
 
 type Ref = {
@@ -136,8 +137,8 @@ export async function createRefIndex(gitdir: string) {
         let cachedRefsWithOid = listRefsWithOidCache.get(prefix);
 
         if (cachedRefsWithOid === undefined) {
-            const oids = await Promise.all(
-                cachedRefs.map((name) => refResolver.resolveOid(prefix + name))
+            const oids = await promiseAllThreaded(20, cachedRefs, (name) =>
+                refResolver.resolveOid(prefix + name)
             );
 
             cachedRefsWithOid = cachedRefs.map((name, index) => ({
@@ -210,8 +211,8 @@ export async function createRefIndex(gitdir: string) {
 
         async stat() {
             const remotes = listRemotes();
-            const branchesByRemote = await Promise.all(
-                remotes.map((remote) => listRemoteBranches(remote))
+            const branchesByRemote = await promiseAllThreaded(20, remotes, (remote) =>
+                listRemoteBranches(remote)
             );
 
             return {

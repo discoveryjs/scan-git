@@ -2,6 +2,7 @@ import { join as pathJoin } from 'path';
 import { promises as fsPromises } from 'fs';
 import { PackContent, readPackFile } from './packed-pack.js';
 import { objectsStatFromTypes, sumObjectsStat } from './utils/stat.js';
+import { promiseAllThreaded } from './utils/threads.js';
 import {
     InternalGitObjectContent,
     InternalGitObjectHeader,
@@ -75,10 +76,8 @@ export async function createPackedObjectIndex(
             : !cruftPackFilenames.includes(filename);
     });
 
-    const packFiles = await Promise.all(
-        packFilenames.map((filename) =>
-            readPackFile(gitdir, `${PACKDIR}/${filename}`, readObjectHeaderByHash, readObjectByHash)
-        )
+    const packFiles = await promiseAllThreaded(20, packFilenames, async (filename) =>
+        readPackFile(gitdir, `${PACKDIR}/${filename}`, readObjectHeaderByHash, readObjectByHash)
     );
 
     return {

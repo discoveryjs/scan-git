@@ -10,6 +10,7 @@ import {
 } from './types.js';
 import { binarySearchHash } from './utils/binary-search.js';
 import { createObjectsTypeStat, objectsStatFromTypes } from './utils/stat.js';
+import { promiseAllThreaded } from './utils/threads.js';
 
 type LooseObjectMap = Map<string, string>;
 type LooseObjectMapEntry = [oid: string, relpath: string];
@@ -20,14 +21,12 @@ async function createLooseObjectMap(gitdir: string): Promise<LooseObjectMap> {
         /^[0-9a-f]{2}$/.test(p)
     );
 
-    const objectDirs = await Promise.all(
-        looseDirs.map((dir) =>
-            fsPromises
-                .readdir(pathJoin(objectsPath, dir))
-                .then((files) =>
-                    files.map((file): LooseObjectMapEntry => [dir + file, `objects/${dir}/${file}`])
-                )
-        )
+    const objectDirs = await promiseAllThreaded(20, looseDirs, (dir) =>
+        fsPromises
+            .readdir(pathJoin(objectsPath, dir))
+            .then((files) =>
+                files.map((file): LooseObjectMapEntry => [dir + file, `objects/${dir}/${file}`])
+            )
     );
 
     return new Map(objectDirs.flat().sort(([a], [b]) => (a < b ? -1 : 1)));
