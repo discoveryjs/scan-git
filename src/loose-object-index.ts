@@ -17,14 +17,14 @@ type LooseObjectMapEntry = [oid: string, relpath: string];
 
 async function createLooseObjectMap(
     gitdir: string,
-    runConcurrent: NormalizedGitReaderOptions['performConcurrent']
+    { performConcurrent }: NormalizedGitReaderOptions
 ): Promise<LooseObjectMap> {
     const objectsPath = pathJoin(gitdir, 'objects');
     const looseDirs = (await fsPromises.readdir(objectsPath)).filter((p) =>
         /^[0-9a-f]{2}$/.test(p)
     );
 
-    const objectDirs = await runConcurrent(looseDirs, (dir) =>
+    const objectDirs = await performConcurrent(looseDirs, (dir) =>
         fsPromises
             .readdir(pathJoin(objectsPath, dir))
             .then((files) =>
@@ -79,11 +79,8 @@ function parseLooseObject(buffer: Buffer): InternalGitObjectContent {
     };
 }
 
-export async function createLooseObjectIndex(
-    gitdir: string,
-    { performConcurrent }: NormalizedGitReaderOptions
-) {
-    const looseObjectMap = await createLooseObjectMap(gitdir, performConcurrent);
+export async function createLooseObjectIndex(gitdir: string, options: NormalizedGitReaderOptions) {
+    const looseObjectMap = await createLooseObjectMap(gitdir, options);
     const { fanoutTable, binaryNames, names } = indexObjectNames([...looseObjectMap.keys()]);
 
     const getOidFromHash = (hash: Buffer) => {
