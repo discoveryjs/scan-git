@@ -6,19 +6,20 @@ import { createPackedObjectIndex } from './packed-object-index.js';
 import { createFilesMethods } from './files-methods.js';
 import { createCommitMethods } from './commits.js';
 import { createStatMethod } from './stat.js';
+import { promiseAllThreaded } from './utils/threads.js';
 import { GitReaderOptions, NormalizedGitReaderOptions, CruftPackMode } from './types';
 
 export * from './types.js';
 export * from './parse-object.js';
 export { isGitDir, resolveGitDir };
 
-export async function createGitReader(gitdir: string, options?: GitReaderOptions) {
+export async function createGitReader(gitdir: string, options?: Partial<GitReaderOptions>) {
     const startInitTime = Date.now();
     const normalizedOptions = normalizeOptions(options);
     const resolvedGitDir = await resolveGitDir(gitdir);
     const [refIndex, looseObjectIndex, packedObjectIndex] = await Promise.all([
-        createRefIndex(resolvedGitDir),
-        createLooseObjectIndex(resolvedGitDir),
+        createRefIndex(resolvedGitDir, normalizedOptions),
+        createLooseObjectIndex(resolvedGitDir, normalizedOptions),
         createPackedObjectIndex(resolvedGitDir, normalizedOptions)
     ]);
     const { readObjectHeaderByHash, readObjectByHash, readObjectHeaderByOid, readObjectByOid } =
@@ -38,27 +39,30 @@ export async function createGitReader(gitdir: string, options?: GitReaderOptions
         async dispose() {
             await Promise.all([looseObjectIndex.dispose(), packedObjectIndex.dispose()]);
         },
-        stat: createStatMethod({
-            gitdir: resolvedGitDir,
-            refIndex,
-            looseObjectIndex,
-            packedObjectIndex
-        }),
+        stat: createStatMethod(
+            resolvedGitDir,
+            { refIndex, looseObjectIndex, packedObjectIndex },
+            normalizedOptions
+        ),
 
         initTime: Date.now() - startInitTime
     };
 }
 
-function normalizeOptions(options?: GitReaderOptions): NormalizedGitReaderOptions {
-    if (!options || options.cruftPacks === undefined) {
-        return { cruftPacks: 'include' };
-    }
+function normalizeOptions(options?: Partial<GitReaderOptions>): NormalizedGitReaderOptions {
+    const { cruftPacks = true, maxConcurrency } = options || {};
+    const maxConcurrencyNormalized = Number.isFinite(maxConcurrency)
+        ? (maxConcurrency as number)
+        : 50;
 
     return {
+        maxConcurrency: maxConcurrencyNormalized,
+        performConcurrent: (queue, action) =>
+            promiseAllThreaded(maxConcurrencyNormalized, queue, action),
         cruftPacks:
-            typeof options.cruftPacks === 'string'
-                ? validateCruftPackMode(options.cruftPacks)
-                : options.cruftPacks // expands true/false aliases
+            typeof cruftPacks === 'string'
+                ? validateCruftPackMode(cruftPacks)
+                : cruftPacks // expands true/false aliases
                 ? 'include'
                 : 'exclude'
     };

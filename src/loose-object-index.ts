@@ -5,6 +5,7 @@ import {
     GitObject,
     InternalGitObjectContent,
     InternalGitObjectHeader,
+    NormalizedGitReaderOptions,
     ObjectsTypeStat,
     PackedObjectType
 } from './types.js';
@@ -14,20 +15,21 @@ import { createObjectsTypeStat, objectsStatFromTypes } from './utils/stat.js';
 type LooseObjectMap = Map<string, string>;
 type LooseObjectMapEntry = [oid: string, relpath: string];
 
-async function createLooseObjectMap(gitdir: string): Promise<LooseObjectMap> {
+async function createLooseObjectMap(
+    gitdir: string,
+    { performConcurrent }: NormalizedGitReaderOptions
+): Promise<LooseObjectMap> {
     const objectsPath = pathJoin(gitdir, 'objects');
     const looseDirs = (await fsPromises.readdir(objectsPath)).filter((p) =>
         /^[0-9a-f]{2}$/.test(p)
     );
 
-    const objectDirs = await Promise.all(
-        looseDirs.map((dir) =>
-            fsPromises
-                .readdir(pathJoin(objectsPath, dir))
-                .then((files) =>
-                    files.map((file): LooseObjectMapEntry => [dir + file, `objects/${dir}/${file}`])
-                )
-        )
+    const objectDirs = await performConcurrent(looseDirs, (dir) =>
+        fsPromises
+            .readdir(pathJoin(objectsPath, dir))
+            .then((files) =>
+                files.map((file): LooseObjectMapEntry => [dir + file, `objects/${dir}/${file}`])
+            )
     );
 
     return new Map(objectDirs.flat().sort(([a], [b]) => (a < b ? -1 : 1)));
@@ -77,8 +79,8 @@ function parseLooseObject(buffer: Buffer): InternalGitObjectContent {
     };
 }
 
-export async function createLooseObjectIndex(gitdir: string) {
-    const looseObjectMap = await createLooseObjectMap(gitdir);
+export async function createLooseObjectIndex(gitdir: string, options: NormalizedGitReaderOptions) {
+    const looseObjectMap = await createLooseObjectMap(gitdir, options);
     const { fanoutTable, binaryNames, names } = indexObjectNames([...looseObjectMap.keys()]);
 
     const getOidFromHash = (hash: Buffer) => {

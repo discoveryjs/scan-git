@@ -1,6 +1,7 @@
 import { promises as fsPromises, existsSync } from 'fs';
 import { join as pathJoin, basename, sep as pathSep } from 'path';
 import { scanFs } from '@discoveryjs/scan-fs';
+import { NormalizedGitReaderOptions } from './types.js';
 
 type Ref = {
     name: string;
@@ -49,7 +50,10 @@ function isOid(value: unknown) {
     return typeof value === 'string' && value.length === 40 && /^[0-9a-f]{40}$/.test(value);
 }
 
-export async function createRefIndex(gitdir: string) {
+export async function createRefIndex(
+    gitdir: string,
+    { performConcurrent }: NormalizedGitReaderOptions
+) {
     const refResolver = await createRefResolver(gitdir);
 
     // expand a ref into a full form
@@ -136,8 +140,8 @@ export async function createRefIndex(gitdir: string) {
         let cachedRefsWithOid = listRefsWithOidCache.get(prefix);
 
         if (cachedRefsWithOid === undefined) {
-            const oids = await Promise.all(
-                cachedRefs.map((name) => refResolver.resolveOid(prefix + name))
+            const oids = await performConcurrent(cachedRefs, (name) =>
+                refResolver.resolveOid(prefix + name)
             );
 
             cachedRefsWithOid = cachedRefs.map((name, index) => ({
@@ -210,8 +214,8 @@ export async function createRefIndex(gitdir: string) {
 
         async stat() {
             const remotes = listRemotes();
-            const branchesByRemote = await Promise.all(
-                remotes.map((remote) => listRemoteBranches(remote))
+            const branchesByRemote = await performConcurrent(remotes, (remote) =>
+                listRemoteBranches(remote)
             );
 
             return {

@@ -1,5 +1,6 @@
 ## next
 
+- Added `maxConcurrency` option to limit concurrent FS operations, preventing "too many open files" errors (#8)
 - Fixed Node.js warnings such as "Warning: Closing file descriptor # on garbage collection", which is deprecated in Node.js 22 and will result in an error being thrown in the future
 
 ## 0.1.4 (2024-10-30)

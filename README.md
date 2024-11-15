@@ -27,6 +27,7 @@ await repo.dispose();
 
 - `gitdir`: string - path to the git repo
 - `options` – optional settings:
+  - `maxConcurrency` – limit the number of file system operations (default: 50)
   - `cruftPacks` – defines how [cruft packs](https://git-scm.com/docs/cruft-packs) are processed:
     - `'include'` or `true` (default) - process all packs
     - `'exclude'` or `false` - exclude cruft packs from processing

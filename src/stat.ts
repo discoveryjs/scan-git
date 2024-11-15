@@ -5,18 +5,19 @@ import { sumObjectsStat } from './utils/stat.js';
 import { createRefIndex } from './resolve-ref.js';
 import { createLooseObjectIndex } from './loose-object-index.js';
 import { createPackedObjectIndex } from './packed-object-index.js';
+import { NormalizedGitReaderOptions } from './types.js';
 
-export function createStatMethod({
-    gitdir,
-    refIndex,
-    looseObjectIndex,
-    packedObjectIndex
-}: {
-    gitdir: string;
+type CreateStatMethodInput = {
     refIndex: Awaited<ReturnType<typeof createRefIndex>>;
     looseObjectIndex: Awaited<ReturnType<typeof createLooseObjectIndex>>;
     packedObjectIndex: Awaited<ReturnType<typeof createPackedObjectIndex>>;
-}) {
+};
+
+export function createStatMethod(
+    gitdir: string,
+    { refIndex, looseObjectIndex, packedObjectIndex }: CreateStatMethodInput,
+    { performConcurrent }: NormalizedGitReaderOptions
+) {
     return async function () {
         const [refs, looseObjects, packedObjects, { files }] = await Promise.all([
             refIndex.stat(),
@@ -25,8 +26,8 @@ export function createStatMethod({
             scanFs(gitdir)
         ]);
 
-        const fileStats = await Promise.all(
-            files.map((file) => fsPromises.stat(path.join(gitdir, file.path)))
+        const fileStats = await performConcurrent(files, (file) =>
+            fsPromises.stat(path.join(gitdir, file.path))
         );
 
         const objectsTypes = looseObjects.objects.types.map((entry) => ({ ...entry }));

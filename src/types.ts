@@ -131,9 +131,20 @@ export interface GitReaderOptions {
      *
      * @default 'include'
      */
-    cruftPacks?: CruftPackMode | boolean;
+    cruftPacks: CruftPackMode | boolean;
+
+    /**
+     * Maximum number of concurrent file system operations.
+     * @default 50
+     */
+    maxConcurrency: number;
 }
 
 export interface NormalizedGitReaderOptions {
     cruftPacks: CruftPackMode;
+    maxConcurrency: number;
+    performConcurrent: <T, R>(
+        queue: T[],
+        action: (item: T, itemIdx: number) => Promise<R>
+    ) => Promise<R[]>;
 }
