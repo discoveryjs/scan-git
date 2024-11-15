@@ -31,6 +31,7 @@ await repo.dispose();
     - `'include'` or `true` (default) - process all packs
     - `'exclude'` or `false` - exclude cruft packs from processing
     - `'only'` - process cruft packs only
+  - `concurrentFsLimit` – number of concurrent file system operations (default: 50)
 
 ### Refs
 

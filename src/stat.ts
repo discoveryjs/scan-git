@@ -6,18 +6,22 @@ import { promiseAllThreaded } from './utils/threads.js';
 import { createRefIndex } from './resolve-ref.js';
 import { createLooseObjectIndex } from './loose-object-index.js';
 import { createPackedObjectIndex } from './packed-object-index.js';
+import { NormalizedGitReaderOptions } from './types.js';
 
-export function createStatMethod({
-    gitdir,
-    refIndex,
-    looseObjectIndex,
-    packedObjectIndex
-}: {
-    gitdir: string;
-    refIndex: Awaited<ReturnType<typeof createRefIndex>>;
-    looseObjectIndex: Awaited<ReturnType<typeof createLooseObjectIndex>>;
-    packedObjectIndex: Awaited<ReturnType<typeof createPackedObjectIndex>>;
-}) {
+export function createStatMethod(
+    {
+        gitdir,
+        refIndex,
+        looseObjectIndex,
+        packedObjectIndex
+    }: {
+        gitdir: string;
+        refIndex: Awaited<ReturnType<typeof createRefIndex>>;
+        looseObjectIndex: Awaited<ReturnType<typeof createLooseObjectIndex>>;
+        packedObjectIndex: Awaited<ReturnType<typeof createPackedObjectIndex>>;
+    },
+    { concurrentFsLimit }: NormalizedGitReaderOptions
+) {
     return async function () {
         const [refs, looseObjects, packedObjects, { files }] = await Promise.all([
             refIndex.stat(),
@@ -26,7 +30,7 @@ export function createStatMethod({
             scanFs(gitdir)
         ]);
 
-        const fileStats = await promiseAllThreaded(20, files, (file) =>
+        const fileStats = await promiseAllThreaded(concurrentFsLimit, files, (file) =>
             fsPromises.stat(path.join(gitdir, file.path))
         );
 

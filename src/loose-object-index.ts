@@ -5,6 +5,7 @@ import {
     GitObject,
     InternalGitObjectContent,
     InternalGitObjectHeader,
+    NormalizedGitReaderOptions,
     ObjectsTypeStat,
     PackedObjectType
 } from './types.js';
@@ -15,13 +16,16 @@ import { promiseAllThreaded } from './utils/threads.js';
 type LooseObjectMap = Map<string, string>;
 type LooseObjectMapEntry = [oid: string, relpath: string];
 
-async function createLooseObjectMap(gitdir: string): Promise<LooseObjectMap> {
+async function createLooseObjectMap(
+    gitdir: string,
+    { concurrentFsLimit }: NormalizedGitReaderOptions
+): Promise<LooseObjectMap> {
     const objectsPath = pathJoin(gitdir, 'objects');
     const looseDirs = (await fsPromises.readdir(objectsPath)).filter((p) =>
         /^[0-9a-f]{2}$/.test(p)
     );
 
-    const objectDirs = await promiseAllThreaded(20, looseDirs, (dir) =>
+    const objectDirs = await promiseAllThreaded(concurrentFsLimit, looseDirs, (dir) =>
         fsPromises
             .readdir(pathJoin(objectsPath, dir))
             .then((files) =>
@@ -76,8 +80,8 @@ function parseLooseObject(buffer: Buffer): InternalGitObjectContent {
     };
 }
 
-export async function createLooseObjectIndex(gitdir: string) {
-    const looseObjectMap = await createLooseObjectMap(gitdir);
+export async function createLooseObjectIndex(gitdir: string, options: NormalizedGitReaderOptions) {
+    const looseObjectMap = await createLooseObjectMap(gitdir, options);
     const { fanoutTable, binaryNames, names } = indexObjectNames([...looseObjectMap.keys()]);
 
     const getOidFromHash = (hash: Buffer) => {

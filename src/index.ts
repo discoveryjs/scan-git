@@ -17,8 +17,8 @@ export async function createGitReader(gitdir: string, options?: GitReaderOptions
     const normalizedOptions = normalizeOptions(options);
     const resolvedGitDir = await resolveGitDir(gitdir);
     const [refIndex, looseObjectIndex, packedObjectIndex] = await Promise.all([
-        createRefIndex(resolvedGitDir),
-        createLooseObjectIndex(resolvedGitDir),
+        createRefIndex(resolvedGitDir, normalizedOptions),
+        createLooseObjectIndex(resolvedGitDir, normalizedOptions),
         createPackedObjectIndex(resolvedGitDir, normalizedOptions)
     ]);
     const { readObjectHeaderByHash, readObjectByHash, readObjectHeaderByOid, readObjectByOid } =
@@ -38,12 +38,15 @@ export async function createGitReader(gitdir: string, options?: GitReaderOptions
         async dispose() {
             await Promise.all([looseObjectIndex.dispose(), packedObjectIndex.dispose()]);
         },
-        stat: createStatMethod({
-            gitdir: resolvedGitDir,
-            refIndex,
-            looseObjectIndex,
-            packedObjectIndex
-        }),
+        stat: createStatMethod(
+            {
+                gitdir: resolvedGitDir,
+                refIndex,
+                looseObjectIndex,
+                packedObjectIndex
+            },
+            normalizedOptions
+        ),
 
         initTime: Date.now() - startInitTime
     };
@@ -51,7 +54,7 @@ export async function createGitReader(gitdir: string, options?: GitReaderOptions
 
 function normalizeOptions(options?: GitReaderOptions): NormalizedGitReaderOptions {
     if (!options || options.cruftPacks === undefined) {
-        return { cruftPacks: 'include' };
+        return { cruftPacks: 'include', concurrentFsLimit: 50 };
     }
 
     return {
@@ -60,7 +63,8 @@ function normalizeOptions(options?: GitReaderOptions): NormalizedGitReaderOption
                 ? validateCruftPackMode(options.cruftPacks)
                 : options.cruftPacks // expands true/false aliases
                 ? 'include'
-                : 'exclude'
+                : 'exclude',
+        concurrentFsLimit: options.concurrentFsLimit ?? 50
     };
 }
 

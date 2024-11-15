@@ -20,7 +20,7 @@ const PACKDIR = 'objects/pack';
  */
 export async function createPackedObjectIndex(
     gitdir: string,
-    { cruftPacks }: NormalizedGitReaderOptions
+    { cruftPacks, concurrentFsLimit }: NormalizedGitReaderOptions
 ) {
     function readObjectHeaderByHash(
         hash: Buffer,
@@ -76,7 +76,7 @@ export async function createPackedObjectIndex(
             : !cruftPackFilenames.includes(filename);
     });
 
-    const packFiles = await promiseAllThreaded(20, packFilenames, async (filename) =>
+    const packFiles = await promiseAllThreaded(concurrentFsLimit, packFilenames, async (filename) =>
         readPackFile(gitdir, `${PACKDIR}/${filename}`, readObjectHeaderByHash, readObjectByHash)
     );
 

@@ -132,8 +132,14 @@ export interface GitReaderOptions {
      * @default 'include'
      */
     cruftPacks?: CruftPackMode | boolean;
+    /**
+     * Maximum number of concurrent file system operations.
+     * @default 50
+     */
+    concurrentFsLimit?: number;
 }
 
 export interface NormalizedGitReaderOptions {
     cruftPacks: CruftPackMode;
+    concurrentFsLimit: number;
 }
