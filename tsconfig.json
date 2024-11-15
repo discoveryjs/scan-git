@@ -5,7 +5,7 @@
         "declarationDir": "./lib",
         "module": "ES2020",
         "moduleResolution": "node",
-        "target": "ES6",
+        "target": "ES2021",
         "noImplicitAny": true
     },
     "include": ["src/**/*.ts"],
