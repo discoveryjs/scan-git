@@ -19,11 +19,11 @@
  *     readPackFile(gitdir, `${PACKDIR}/${filename}`, readObjectHeaderByHash, readObjectByHash)
  *   );
  */
-export async function promiseAllThreaded<IN, OUT>(
+export async function promiseAllThreaded<T, R>(
     maxThreadCount: number,
-    queue: Array<IN>,
-    asyncFn: (task: IN, taskIdx: number) => Promise<OUT>
-): Promise<Array<OUT>> {
+    queue: T[],
+    asyncFn: (task: T, taskIdx: number) => Promise<R>
+): Promise<R[]> {
     const result = Array(queue.length);
     let taskProcessed = 0;
     let queueSnapshot = [...queue];

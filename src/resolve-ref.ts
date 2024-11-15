@@ -1,6 +1,5 @@
 import { promises as fsPromises, existsSync } from 'fs';
 import { join as pathJoin, basename, sep as pathSep } from 'path';
-import { promiseAllThreaded } from './utils/threads.js';
 import { scanFs } from '@discoveryjs/scan-fs';
 import { NormalizedGitReaderOptions } from './types.js';
 
@@ -53,7 +52,7 @@ function isOid(value: unknown) {
 
 export async function createRefIndex(
     gitdir: string,
-    { concurrentFsLimit }: NormalizedGitReaderOptions
+    { performConcurrent }: NormalizedGitReaderOptions
 ) {
     const refResolver = await createRefResolver(gitdir);
 
@@ -141,7 +140,7 @@ export async function createRefIndex(
         let cachedRefsWithOid = listRefsWithOidCache.get(prefix);
 
         if (cachedRefsWithOid === undefined) {
-            const oids = await promiseAllThreaded(50, cachedRefs, (name) =>
+            const oids = await performConcurrent(cachedRefs, (name) =>
                 refResolver.resolveOid(prefix + name)
             );
 
@@ -215,10 +214,8 @@ export async function createRefIndex(
 
         async stat() {
             const remotes = listRemotes();
-            const branchesByRemote = await promiseAllThreaded(
-                concurrentFsLimit,
-                remotes,
-                (remote) => listRemoteBranches(remote)
+            const branchesByRemote = await performConcurrent(remotes, (remote) =>
+                listRemoteBranches(remote)
             );
 
             return {

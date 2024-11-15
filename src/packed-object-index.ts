@@ -2,7 +2,6 @@ import { join as pathJoin } from 'path';
 import { promises as fsPromises } from 'fs';
 import { PackContent, readPackFile } from './packed-pack.js';
 import { objectsStatFromTypes, sumObjectsStat } from './utils/stat.js';
-import { promiseAllThreaded } from './utils/threads.js';
 import {
     InternalGitObjectContent,
     InternalGitObjectHeader,
@@ -20,7 +19,7 @@ const PACKDIR = 'objects/pack';
  */
 export async function createPackedObjectIndex(
     gitdir: string,
-    { cruftPacks, concurrentFsLimit }: NormalizedGitReaderOptions
+    { cruftPacks, performConcurrent }: NormalizedGitReaderOptions
 ) {
     function readObjectHeaderByHash(
         hash: Buffer,
@@ -76,7 +75,7 @@ export async function createPackedObjectIndex(
             : !cruftPackFilenames.includes(filename);
     });
 
-    const packFiles = await promiseAllThreaded(concurrentFsLimit, packFilenames, async (filename) =>
+    const packFiles = await performConcurrent(packFilenames, async (filename) =>
         readPackFile(gitdir, `${PACKDIR}/${filename}`, readObjectHeaderByHash, readObjectByHash)
     );
 

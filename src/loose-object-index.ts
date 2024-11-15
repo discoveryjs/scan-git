@@ -11,21 +11,20 @@ import {
 } from './types.js';
 import { binarySearchHash } from './utils/binary-search.js';
 import { createObjectsTypeStat, objectsStatFromTypes } from './utils/stat.js';
-import { promiseAllThreaded } from './utils/threads.js';
 
 type LooseObjectMap = Map<string, string>;
 type LooseObjectMapEntry = [oid: string, relpath: string];
 
 async function createLooseObjectMap(
     gitdir: string,
-    { concurrentFsLimit }: NormalizedGitReaderOptions
+    runConcurrent: NormalizedGitReaderOptions['performConcurrent']
 ): Promise<LooseObjectMap> {
     const objectsPath = pathJoin(gitdir, 'objects');
     const looseDirs = (await fsPromises.readdir(objectsPath)).filter((p) =>
         /^[0-9a-f]{2}$/.test(p)
     );
 
-    const objectDirs = await promiseAllThreaded(concurrentFsLimit, looseDirs, (dir) =>
+    const objectDirs = await runConcurrent(looseDirs, (dir) =>
         fsPromises
             .readdir(pathJoin(objectsPath, dir))
             .then((files) =>
@@ -80,8 +79,11 @@ function parseLooseObject(buffer: Buffer): InternalGitObjectContent {
     };
 }
 
-export async function createLooseObjectIndex(gitdir: string, options: NormalizedGitReaderOptions) {
-    const looseObjectMap = await createLooseObjectMap(gitdir, options);
+export async function createLooseObjectIndex(
+    gitdir: string,
+    { performConcurrent }: NormalizedGitReaderOptions
+) {
+    const looseObjectMap = await createLooseObjectMap(gitdir, performConcurrent);
     const { fanoutTable, binaryNames, names } = indexObjectNames([...looseObjectMap.keys()]);
 
     const getOidFromHash = (hash: Buffer) => {
