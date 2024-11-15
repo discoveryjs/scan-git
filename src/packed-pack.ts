@@ -54,6 +54,14 @@ const oidSize = 20;
 const buffers = new Array(5000);
 let reuseBufferCount = 0;
 
+// Use FinalizationRegistry to close a file handler owned by a PackContent instance
+// once it loses all its references and is collected by GC.
+// This fixes Node.js warnings such as "Warning: Closing file descriptor # on garbage collection",
+// which is deprecated in Node.js 22 and will result in an error being thrown in the future.
+const fileHandlerRegistry = new FinalizationRegistry((fh: fsPromises.FileHandle) => {
+    fh.close();
+});
+
 export class PackContent {
     static buildReverseIndex(pack: PackContent) {
         const reverseIndex = new Uint32Array(pack.size);
@@ -82,6 +90,7 @@ export class PackContent {
         public reverseIndex: PackReverseIndex | null
     ) {
         this.cache = new Map();
+        fileHandlerRegistry.register(this, fh);
     }
 
     getObjectOffset(hash: Buffer) {
